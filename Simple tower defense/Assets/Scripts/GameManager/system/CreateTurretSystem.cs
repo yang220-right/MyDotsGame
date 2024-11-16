@@ -34,7 +34,7 @@ public partial struct CreateTurretSystem : ISystem {
                                 var e = ECB.Instantiate(index, turretPrefabData.MachineGunBasePrefab);
                                 ECB.AddComponent(index, e, new BasicAttributeData
                                 {
-                                    CurrentPos = item.Pos
+                                    CurrentPos = item.Pos,
                                 });
                                 ECB.AddComponent<BaseTurretData>(index, e);
                                 ECB.SetEnabled(index, e, false);

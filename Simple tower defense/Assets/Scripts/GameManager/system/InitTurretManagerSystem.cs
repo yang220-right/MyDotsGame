@@ -7,20 +7,18 @@ using Unity.Transforms;
 [UpdateBefore(typeof(TransformSystemGroup))]
 [BurstCompile]
 public partial struct InitTurretManagerSystem : ISystem {
-    [BurstCompile]
-    private void OnUpdate(ref SystemState state) {
+    private EntityQuery TurretQuery;
+    public void OnCreate(ref SystemState state) {
         var build = new EntityQueryBuilder(Allocator.TempJob)
             .WithAll<BasicAttributeData>()
             .WithAll<LocalTransform>()
             .WithOptions(EntityQueryOptions.IncludeDisabledEntities);
         ;
-        var TurretQuery = build.Build(state.EntityManager);
-        if (TurretQuery.CalculateEntityCount() <= 0) {
-            build.Dispose();
-            TurretQuery.Dispose();
-            return;
-        }
-
+        TurretQuery = build.Build(state.EntityManager);
+        state.RequireForUpdate(TurretQuery);
+    }
+    [BurstCompile]
+    private void OnUpdate(ref SystemState state) {
         var ecb = new EntityCommandBuffer(Allocator.TempJob);
         state.Dependency = new InitTurretJob()
         {
@@ -41,6 +39,10 @@ public partial struct InitTurretManagerSystem : ISystem {
 
             if (data.Init) return;
             data.Init = true;
+            data.MaxHP = 10;
+            data.CurrentHP = data.MaxHP;
+            data.CurrentRange = 3;
+
             var posY = trans.Position.y;
             var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));
             ECB.SetComponent(index, e, tempTrans);
