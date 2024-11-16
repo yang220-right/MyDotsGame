@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Entities;
 using Unity.Jobs;
 
 namespace NativeQuadTree {
@@ -11,7 +12,7 @@ namespace NativeQuadTree {
         /// 批量将多个项目插入树中
         /// </summary>
         [BurstCompile]
-        public struct AddBulkJob<T> : IJob where T : unmanaged {
+        public struct AddBulkJob<T> : IJob where T : unmanaged, IComponentData {
             [ReadOnly]
             public NativeArray<QuadElement<T>> Elements;
 
@@ -26,7 +27,7 @@ namespace NativeQuadTree {
         /// 关于如何进行范围查询的示例，最好自己编写并批量执行多个查询
         /// </summary>
         [BurstCompile]
-        public struct RangeQueryJob<T> : IJob where T : unmanaged {
+        public struct RangeQueryJob<T> : IJob where T : unmanaged, IComponentData {
             [ReadOnly]
             public AABB2D Bounds;
 

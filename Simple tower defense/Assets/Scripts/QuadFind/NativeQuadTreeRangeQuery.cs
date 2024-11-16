@@ -1,6 +1,7 @@
 using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Entities;
 using Unity.Mathematics;
 
 namespace NativeQuadTree {
@@ -83,6 +84,86 @@ namespace NativeQuadTree {
                     default: throw new Exception();
                 }
             }
+
+            #region 拓展方法 
+
+            NativeQuadTree<BasicAttributeData> newTree;
+            UnsafeList<BasicAttributeData>* newFastResults;
+            public void Query(QueryInfo queryInfo, NativeQuadTree<BasicAttributeData> tree, AABB2D bounds, NativeList<QuadElement<BasicAttributeData>> results) {
+                this.newTree = tree;
+                this.bounds = bounds;
+                count = 0;
+
+                // 获取指向内部列表数据的指针以加快写入速度
+                newFastResults = (UnsafeList<BasicAttributeData>*)NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref results);
+                RecursiveRangeQuery(queryInfo, newTree.bounds, false, 1, 1);
+                newFastResults->Length = count;
+            }
+            public void RecursiveRangeQuery(QueryInfo info, AABB2D parentBounds, bool parentContained, int prevOffset, int depth) {
+                if (count + 4 * newTree.maxLeafElements > newFastResults->Capacity) {
+                    newFastResults->Resize(math.max(newFastResults->Capacity * 2, count + 4 * newTree.maxLeafElements));
+                }
+
+                var depthSize = LookupTables.DepthSizeLookup[newTree.maxDepth - depth+1];
+                for (int l = 0; l < 4; l++) {
+                    var childBounds = GetChildBounds(parentBounds, l);
+
+                    var contained = parentContained;
+                    if (!contained) {
+                        if (bounds.Contains(childBounds)) {
+                            contained = true;
+                        } else if (!bounds.Intersects(childBounds)) {
+                            continue;
+                        }
+                    }
+
+                    var at = prevOffset + l * depthSize;
+
+                    var elementCount = UnsafeUtility.ReadArrayElement<int>(newTree.lookup->Ptr, at);
+
+                    if (elementCount > newTree.maxLeafElements && depth < newTree.maxDepth) {
+                        RecursiveRangeQuery(childBounds, contained, at + 1, depth + 1);
+                    } else if (elementCount != 0) {
+                        var node = UnsafeUtility.ReadArrayElement<QuadNode>(newTree.nodes->Ptr, at);
+
+                        if (contained) {
+                            var index = (void*) ((IntPtr) newTree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement<BasicAttributeData>>());
+
+                            UnsafeUtility.MemCpy((void*)((IntPtr)newFastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement<BasicAttributeData>>()),
+                                index, node.count * UnsafeUtility.SizeOf<QuadElement<BasicAttributeData>>());
+                            count += node.count;
+                        } else {
+                            for (int k = 0; k < node.count; k++) {
+                                var element = UnsafeUtility.ReadArrayElement<QuadElement<BasicAttributeData>>(newTree.elements->Ptr, node.firstChildIndex + k);
+                                var targetData = element.element;
+                                if (bounds.Contains(element.pos)) {
+                                    bool canAdd = false;
+                                    switch (info.type) {
+                                        case QueryType.Include:
+                                            canAdd = (targetData.Type & info.targetType) == targetData.Type;
+                                            break;
+                                        case QueryType.FilterSelf:
+                                            canAdd = (targetData.Type & info.targetType) != targetData.Type && element.selfIndex != info.index;
+                                            break;
+                                        case QueryType.Filter:
+                                            canAdd = (targetData.Type & info.targetType) != targetData.Type;
+                                            break;
+                                        case QueryType.All:
+                                            canAdd = true;
+                                            break;
+                                    }
+                                    if (canAdd) {
+                                        element.queryIndex = info.index;
+                                        UnsafeUtility.WriteArrayElement(newFastResults->Ptr, count++, element);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            #endregion
         }
 
     }

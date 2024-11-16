@@ -21,11 +21,12 @@ public partial struct DotsUtility {
     /// <param name="dataList"></param>
     /// <returns></returns>
     public static NativeArray<QuadElement<T>> GetQuarTreeElements<T>(NativeArray<T> dataList) where T : unmanaged, IComponentData {
-        NativeArray<QuadElement<T>> elements = new NativeArray<QuadElement<T>>(dataList.Length, Allocator.TempJob);
+        NativeArray<QuadElement<T>> elements = new NativeArray<QuadElement<T>>(dataList.Length, Allocator.Temp);
         for (int i = 0; i < dataList.Length; i++) {
             elements[i] = new QuadElement<T>
             {
-                element = dataList[i]
+                element = dataList[i],
+                selfIndex = i
             };
         }
         return elements;

@@ -10,9 +10,14 @@ using static UnityEditor.Progress;
 
 namespace NativeQuadTree {
     // 表示四叉树中的一个元素节点。
+    // 注意,pos必须要小于树的范围,否则报错
     public struct QuadElement<T> where T : unmanaged {
         public float2 pos;
         public T element;
+
+        //拓展属性
+        public int selfIndex;       //自身index
+        public int queryIndex;      
     }
 
     struct QuadNode {
@@ -23,6 +28,29 @@ namespace NativeQuadTree {
         public short count;
         public bool isLeaf;
     }
+
+
+    #region 拓展数据
+    /// <summary>
+    /// 查询类型
+    /// </summary>
+    public enum QueryType {
+        Include,            //多目标查询
+        FilterSelf,    //查询某一目标并排除自己
+        Filter,             //过滤除了target的其他目标
+        All,                //全部查询
+    }
+    /// <summary>
+    /// 查询信息
+    /// </summary>
+    public partial struct QueryInfo {
+        public QueryType type;
+        //查询目标
+        public DataType targetType;
+        public int index;
+    }
+
+    #endregion
 
     /// <summary>
     /// 四叉树旨在与 Burst 一起使用，支持快速批量插入和查询。
@@ -216,6 +244,7 @@ namespace NativeQuadTree {
 #endif
         }
 
+
         #region 拓展方法
 
         /// <summary>
@@ -239,6 +268,13 @@ namespace NativeQuadTree {
             }
             //直接报错
             throw new IndexOutOfRangeException();
+        }
+
+        public void FilterRangeQuery(NativeQuadTree<BasicAttributeData> tree, QueryInfo queryInfo, AABB2D bounds, NativeList<QuadElement<BasicAttributeData>> results) {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(safetyHandle);
+#endif
+            new QuadTreeRangeQuery().Query(queryInfo, tree, bounds, results);
         }
 
         #endregion

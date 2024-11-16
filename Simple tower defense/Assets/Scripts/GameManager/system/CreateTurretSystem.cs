@@ -35,8 +35,10 @@ public partial struct CreateTurretSystem : ISystem {
                                 ECB.AddComponent(index, e, new BasicAttributeData
                                 {
                                     CurrentPos = item.Pos,
+                                    Type = DataType.Turret,
                                 });
                                 ECB.AddComponent<BaseTurretData>(index, e);
+                                ECB.AddComponent<TurretTag>(index, e);
                                 ECB.SetEnabled(index, e, false);
                                 break;
                             }

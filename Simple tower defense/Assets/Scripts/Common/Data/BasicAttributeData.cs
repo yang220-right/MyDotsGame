@@ -1,11 +1,18 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
-
+[Flags]
+public enum DataType {
+    Turret = 1,     //防御塔
+    Enemy = 1 << 1,      //敌人
+    Core = 1 << 2,       //核心
+}
 public partial struct BasicAttributeData : IComponentData {
     public bool Init;
+    public DataType Type;
     public float MaxHP;
     public float CurrentHP;
 
@@ -21,4 +28,5 @@ public partial struct BasicAttributeData : IComponentData {
     public bool IsBeAttack;
 
     public float3 CurrentPos;
+
 }
