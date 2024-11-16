@@ -1,18 +1,18 @@
-using System.Collections;
 using System.Collections.Generic;
+using Unity.Entities;
 using UnityEngine;
 
-public class CreateTurretAuthoring : MonoBehaviour
-{
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+public class CreateTurretAuthoring : MonoBehaviour {
+    public List<GameObject> TurretPrefab;
+}
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+public class CreateTurretBaker : Baker<CreateTurretAuthoring> {
+    public override void Bake(CreateTurretAuthoring authoring) {
+        var e = GetEntity(TransformUsageFlags.None);
+        AddComponent(e, new TurretPrefabData()
+        {
+            MachineGunBasePrefab = GetEntity(authoring.TurretPrefab[0], TransformUsageFlags.Dynamic)
+        });
+        AddComponent<CreateTurretBuffer>(e);
     }
 }

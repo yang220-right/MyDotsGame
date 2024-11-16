@@ -6,5 +6,4 @@ using UnityEngine;
 
 public partial struct BaseTurretData : IComponentData {
     public float3 NearEnemy;
-
 }

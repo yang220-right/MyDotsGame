@@ -1,18 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
+using Unity.Entities;
 using UnityEngine;
 
-public class TurretManagerAuthroing : MonoBehaviour
-{
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+public class TurretManagerAuthroing : MonoBehaviour {
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+}
+public class TurretManagerBaker : Baker<TurretManagerAuthroing> {
+    public override void Bake(TurretManagerAuthroing authoring) {
+        var e = GetEntity(TransformUsageFlags.None);
+        AddComponent<TurretManagerTag>(e);
     }
 }
+public partial struct TurretManagerTag : IComponentData { }

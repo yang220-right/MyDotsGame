@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 public partial struct BasicAttributeData : IComponentData {
+    public bool Init;
     public float MaxHP;
     public float CurrentHP;
 
@@ -18,5 +20,5 @@ public partial struct BasicAttributeData : IComponentData {
     public float RemainAttackIntervalTime;//剩余攻击间隔时间
     public bool IsBeAttack;
 
-    public float CurrentPos;
+    public float3 CurrentPos;
 }
