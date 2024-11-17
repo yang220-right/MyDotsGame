@@ -39,9 +39,19 @@ public partial struct InitTurretManagerSystem : ISystem {
 
             if (data.Init) return;
             data.Init = true;
-            data.MaxHP = 10;
-            data.CurrentHP = data.MaxHP;
-            data.CurrentRange = 3;
+            if (data.Type == DataType.Turret) {
+                data.MaxHP = 10;
+                data.CurrentHP = data.MaxHP;
+                data.CurrentAttackRange = 3;
+            } else if (data.Type == DataType.Core) {
+                data.MaxHP = 100;
+                data.CurrentHP = data.MaxHP;
+                data.CurrentAttackRange = 5;
+            } else {
+                data.MaxHP = 20;
+                data.CurrentHP = data.MaxHP;
+                data.CurrentAttackRange = 2;
+            }
 
             var posY = trans.Position.y;
             var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));

@@ -17,7 +17,7 @@ namespace NativeQuadTree {
 
         //拓展属性
         public int selfIndex;       //自身index
-        public int queryIndex;      
+        public int queryIndex;
     }
 
     struct QuadNode {
@@ -47,7 +47,7 @@ namespace NativeQuadTree {
         public QueryType type;
         //查询目标
         public DataType targetType;
-        public int index;
+        public int selfIndex;
     }
 
     #endregion

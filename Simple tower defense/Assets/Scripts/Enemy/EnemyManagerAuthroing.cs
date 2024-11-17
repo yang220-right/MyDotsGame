@@ -19,19 +19,12 @@ namespace YY.Enemy {
             {
                 BaseCubePrefab = GetEntity(authoring.EnemyList[0], TransformUsageFlags.Dynamic)
             });
-            AddComponent(e, new EnemyInitData
-            {
-                InitPos = authoring.GeneratorPos
-            });
             AddComponent<CreateEnemyBuffer>(e);
         }
     }
 
     public partial struct EnemyPrefabData : IComponentData {
         public Entity BaseCubePrefab;
-    }
-    public partial struct EnemyInitData : IComponentData {
-        public float3  InitPos;
     }
     public enum EnemyType {
         BaseCube,
@@ -51,14 +44,11 @@ namespace YY.Enemy {
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             var enemyPrefabData = SystemAPI.GetSingleton<EnemyPrefabData>();
-            var enemyInitData = SystemAPI.GetSingleton<EnemyInitData>();
 
             state.Dependency = new CreateEnemyJob()
             {
                 ECB = ecb.AsParallelWriter(),
                 EnemyPrefabData = enemyPrefabData,
-                enemyInitData = enemyInitData
-
             }.ScheduleParallel(state.Dependency);
             state.CompleteDependency();
             ecb.Playback(state.EntityManager);
@@ -67,7 +57,6 @@ namespace YY.Enemy {
         private partial struct CreateEnemyJob : IJobEntity {
             public EntityCommandBuffer.ParallelWriter ECB;
             public EnemyPrefabData EnemyPrefabData;
-            public EnemyInitData enemyInitData;
             private void Execute([EntityIndexInQuery] int index, ref DynamicBuffer<CreateEnemyBuffer> buffer) {
                 if (buffer.Length <= 0) return;
                 foreach (var item in buffer)
@@ -77,8 +66,12 @@ namespace YY.Enemy {
                                     var e = ECB.Instantiate(index, EnemyPrefabData.BaseCubePrefab);
                                     ECB.AddComponent(index, e, new BasicAttributeData
                                     {
-                                        CurrentPos = enemyInitData.InitPos,
+                                        CurrentPos = item.Pos,
                                         Type = DataType.Enemy,
+                                    });
+                                    ECB.AddComponent(index, e,new BaseEnemyData()
+                                    {
+                                        Speed = 5,
                                     });
                                     ECB.SetEnabled(index, e, false);
                                     break;

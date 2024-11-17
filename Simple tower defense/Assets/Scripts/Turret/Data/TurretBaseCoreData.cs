@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;
 
-public partial struct TurretBaseCoreData : IComponentData {
+namespace YY.Turret {
+    public partial struct BaseCoreTag : IComponentData { }
+    public partial struct TurretBaseCoreData : IComponentData {
 
+    }
 }

@@ -26,7 +26,8 @@ public partial struct DotsUtility {
             elements[i] = new QuadElement<T>
             {
                 element = dataList[i],
-                selfIndex = i
+                selfIndex = i,
+                queryIndex = -1
             };
         }
         return elements;

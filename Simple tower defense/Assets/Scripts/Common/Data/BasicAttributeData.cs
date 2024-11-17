@@ -11,16 +11,17 @@ public enum DataType {
     Core = 1 << 2,       //核心
 }
 public partial struct BasicAttributeData : IComponentData {
+    public int EntityID;
     public bool Init;
     public DataType Type;
     public float MaxHP;
     public float CurrentHP;
 
-    public float CurrentAttack;//攻击力
     public float BaseAttack;//攻击力
+    public float CurrentAttack;//攻击力
 
-    public float CurrentRange;//攻击范围
-    public float BaseRange;
+    public float BaseAttackRange;
+    public float CurrentAttackRange;//攻击范围
 
     public float CurrentAttackInterval;//攻击间隔 0则为持续攻击
     public float BaseAttackInterval;//攻击间隔 0则为持续攻击

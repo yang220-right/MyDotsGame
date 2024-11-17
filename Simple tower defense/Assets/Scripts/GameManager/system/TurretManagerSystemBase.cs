@@ -1,7 +1,5 @@
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
-using YY.Enemy;
 
 public partial class TurretManagerSystemBase : SystemBase {
     protected override void OnUpdate() {
@@ -17,14 +15,6 @@ public partial class TurretManagerSystemBase : SystemBase {
                     Pos = pos,
                 });
             }
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha1)) {
-            var baseData = SystemAPI.GetSingletonBuffer<CreateEnemyBuffer>();
-            baseData.Add(new CreateEnemyBuffer
-            {
-                EnemyType = EnemyType.BaseCube,
-                Num = 1,
-            });
         }
     }
 }

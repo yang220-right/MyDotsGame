@@ -122,7 +122,7 @@ namespace NativeQuadTree {
                     var elementCount = UnsafeUtility.ReadArrayElement<int>(newTree.lookup->Ptr, at);
 
                     if (elementCount > newTree.maxLeafElements && depth < newTree.maxDepth) {
-                        RecursiveRangeQuery(childBounds, contained, at + 1, depth + 1);
+                        RecursiveRangeQuery(info, childBounds, contained, at + 1, depth + 1);
                     } else if (elementCount != 0) {
                         var node = UnsafeUtility.ReadArrayElement<QuadNode>(newTree.nodes->Ptr, at);
 
@@ -143,7 +143,7 @@ namespace NativeQuadTree {
                                             canAdd = (targetData.Type & info.targetType) == targetData.Type;
                                             break;
                                         case QueryType.FilterSelf:
-                                            canAdd = (targetData.Type & info.targetType) != targetData.Type && element.selfIndex != info.index;
+                                            canAdd = (targetData.Type & info.targetType) != targetData.Type && element.selfIndex != info.selfIndex;
                                             break;
                                         case QueryType.Filter:
                                             canAdd = (targetData.Type & info.targetType) != targetData.Type;
@@ -153,7 +153,7 @@ namespace NativeQuadTree {
                                             break;
                                     }
                                     if (canAdd) {
-                                        element.queryIndex = info.index;
+                                        element.queryIndex = info.selfIndex;
                                         UnsafeUtility.WriteArrayElement(newFastResults->Ptr, count++, element);
                                     }
                                 }
