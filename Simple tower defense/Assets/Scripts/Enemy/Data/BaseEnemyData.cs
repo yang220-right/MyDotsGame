@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using YY.MainGame;
 
 namespace YY.Enemy {
     public partial struct BaseEnemyData : IComponentData {

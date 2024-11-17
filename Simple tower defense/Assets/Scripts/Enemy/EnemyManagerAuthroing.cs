@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using YY.MainGame;
 
 namespace YY.Enemy {
     public class EnemyManagerAuthroing : MonoBehaviour {
@@ -73,6 +74,7 @@ namespace YY.Enemy {
                                     {
                                         Speed = 5,
                                     });
+                                    ECB.AddBuffer<ReduceHPBuffer>(index,e);
                                     ECB.SetEnabled(index, e, false);
                                     break;
                                 }

@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
+using YY.MainGame;
 
 namespace NativeQuadTree {
     public unsafe partial struct NativeQuadTree<T> where T : unmanaged {

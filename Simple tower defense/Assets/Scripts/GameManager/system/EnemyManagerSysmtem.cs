@@ -3,13 +3,13 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using YY.MainGame;
 
 namespace YY.Enemy {
     public partial struct EnemyManagerSysmtem : ISystem {
 
     }
     public partial struct EnemyMoveSystem : ISystem {
-
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
             var query = new EntityQueryBuilder(Allocator.TempJob)
@@ -38,7 +38,8 @@ namespace YY.Enemy {
         private void Execute([EntityIndexInQuery] int index, EnemyAspect data, ref LocalTransform trans) {
             if (math.distancesq(trans.Position, data.MovePos) < 2 * 2) {
                 data.BeAttack(time);
-                var rot = LocalTransform.FromPosition(data.ResetPos(trans.Position));
+                var rot = trans.RotateY(5 * time);
+                ECB.SetComponent(index, data.entity, rot);
                 return;
             }
             data.ResetAttack();

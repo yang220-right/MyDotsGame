@@ -1,7 +1,8 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using YY.Turret;
+using YY.MainGame;
+using YY.Projectile;
 
 namespace YY.Turret {
     [UpdateBefore(typeof(InitTurretManagerSystem))]
@@ -42,6 +43,8 @@ namespace YY.Turret {
                                 });
                                 ECB.AddComponent<TurretBaseCoreData>(index, e);
                                 ECB.AddComponent<BaseCoreTag>(index, e);
+                                ECB.AddBuffer<ReduceHPBuffer>(index, e);
+                                ECB.AddBuffer<CreateProjectBuffer>(index, e);
                                 ECB.SetEnabled(index, e, false);
                                 break;
                             }
@@ -54,6 +57,7 @@ namespace YY.Turret {
                                 });
                                 ECB.AddComponent<BaseTurretData>(index, e);
                                 ECB.AddComponent<TurretTag>(index, e);
+                                ECB.AddBuffer<ReduceHPBuffer>(index, e);
                                 ECB.SetEnabled(index, e, false);
                                 break;
                             }

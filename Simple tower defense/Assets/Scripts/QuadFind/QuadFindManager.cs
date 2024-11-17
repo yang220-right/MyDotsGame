@@ -6,11 +6,10 @@ using Unity.Jobs;
 using Unity.Burst;
 using Unity.Mathematics;
 using YY.Enemy;
+using YY.Projectile;
+using YY.Turret;
 
-namespace YY {
-    public class QuadFindManager : MonoBehaviour {
-
-    }
+namespace YY.MainGame {
     /// <summary>
     /// 查询的数据处理
     /// </summary>
@@ -20,7 +19,7 @@ namespace YY {
         public int QueryIndex;//谁查到的这个数据的index
         public float3 NearPos;
     }
-    [UpdateInGroup(typeof(CustomFixedStep025SimulationSystemGroup))]
+    //[UpdateInGroup(typeof(CustomFixedStep025SimulationSystemGroup))]
     public partial struct QuadFindTurretSystem : ISystem {
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
@@ -34,6 +33,10 @@ namespace YY {
             var enemyQuery = new EntityQueryBuilder(Allocator.TempJob)
                 .WithAll<BasicAttributeData>()
                 .WithAll<BaseEnemyData>()
+                .Build(state.EntityManager);
+            var coreQuery = new EntityQueryBuilder(Allocator.TempJob)
+                .WithAll<BasicAttributeData>()
+                .WithAll<TurretBaseCoreData>()
                 .Build(state.EntityManager);
             var dataArr = allQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
             var entityArr = allQuery.ToEntityArray(Allocator.TempJob);
@@ -54,12 +57,17 @@ namespace YY {
             int enemyIndex = 0;
             var enemyEntity = enemyQuery.ToEntityArray(Allocator.TempJob);
             var enemyID = new NativeArray<int>(enemyEntity.Length,Allocator.TempJob);
+            var coreEntity = coreQuery.ToEntityArray(Allocator.Temp);
+            int coreIndex = 0;
             foreach (var item in entityArr) {
                 if (turretEntity.Length > turrentIndex && turretEntity[turrentIndex] == entityArr[currentIndex]) {
                     turretID[turrentIndex++] = currentIndex++;
                     continue;
                 } else if (enemyEntity.Length > enemyIndex && enemyEntity[enemyIndex] == entityArr[currentIndex]) {
                     enemyID[enemyIndex++] = currentIndex++;
+                    continue;
+                } else if (coreEntity.Length > 0 && coreEntity[coreIndex] == entityArr[currentIndex]) {
+                    coreIndex = currentIndex++;
                     continue;
                 }
                 currentIndex++;
@@ -79,27 +87,45 @@ namespace YY {
                 QuadTree = quadTree,
                 AllData = dataArr,
                 entityArr = entityArr,
+                time = SystemAPI.Time.DeltaTime,
 
                 dataArr = enemyQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob),
                 queryDataArr = enemyQuery.ToComponentDataArray<BaseEnemyData>(Allocator.TempJob),
                 dataIndexInAll = enemyID
             }.Schedule(state.Dependency);
             state.CompleteDependency();
+            if (coreQuery.CalculateEntityCount() > 0) {
+                //核心查询最近敌人
+                state.Dependency = new CoreAttackJob()
+                {
+                    ECB = ecb,
+                    QuadTree = quadTree,
+                    AllData = dataArr,
+                    entityArr = entityArr,
+                    time = SystemAPI.Time.DeltaTime,
+
+                    dataArr = coreQuery.ToComponentDataArray<BasicAttributeData>(Allocator.Temp)[0],
+                    coreIndex = coreIndex,
+                }.Schedule(state.Dependency);
+                state.CompleteDependency();
+            }
 
             ecb.Playback(state.EntityManager);
             quadTree.Dispose();
             elements.Dispose();
             ecb.Dispose();
         }
-        [BurstCompile]
         public static QueryResultDispose FindMinTarget(NativeList<QuadElement<BasicAttributeData>> tempList, float3 comparePos) {
             var q= new QueryResultDispose()
             {
                 MinValue = float.MaxValue,
-                SelfIndex = -1
+                QueryIndex = -1
             };
 
             foreach (var item in tempList) {
+                if (item.element.Type == DataType.Core) {
+                    int a = 0;
+                }
                 var dis = math.distancesq(item.element.CurrentPos,comparePos);
                 if (dis < q.MinValue) {
                     q.MinValue = dis;
@@ -116,9 +142,10 @@ namespace YY {
     [BurstCompile]
     public partial struct EnemyAttackJob : IJob {
         public EntityCommandBuffer ECB;
-        public NativeQuadTree<BasicAttributeData> QuadTree;
-        public NativeArray<BasicAttributeData> AllData;
-        public NativeArray<Entity> entityArr;
+        [ReadOnly]public NativeQuadTree<BasicAttributeData> QuadTree;
+        [ReadOnly]public NativeArray<BasicAttributeData> AllData;
+        [ReadOnly]public NativeArray<Entity> entityArr;
+        [ReadOnly]public float time;
         //谁来查
         public NativeArray<BasicAttributeData> dataArr;
         public NativeArray<BaseEnemyData> queryDataArr;
@@ -143,14 +170,100 @@ namespace YY {
                         tempList);
                 //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
                 var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos);
-                if (q.SelfIndex != -1) {
-                    //var tempData = AllData[q.NearIndex];
+                if (q.QueryIndex >= 0) {
+                    var targetData = AllData[q.QueryIndex];
+                    //敌人攻击防御塔
+                    if (data.IsBeAttack) {
+                        if (data.RemainAttackIntervalTime <= 0) {
+                            ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+                            {
+                                HP = data.CurrentAttack
+                            });
+                            data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                        }
+                    }
                     queryData.MovePos = q.NearPos;
-                    //ECB.SetComponent(entityArr[q.NearIndex], tempData);
-                    ECB.SetComponent(entityArr[q.SelfIndex], queryData);
+                    ECB.SetComponent(entityArr[dataIndexInAll[i]], queryData);
+                    ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+                } else {//没查到人,则执行默认走路
+                    queryData.MovePos = float3.zero;
+                    ECB.SetComponent(entityArr[dataIndexInAll[i]], queryData);
                 }
                 tempList.Clear();
             }
+        }
+    }
+
+    //核心攻击敌人目标查询 暂时为单个
+    [BurstCompile]
+    public partial struct CoreAttackJob : IJob {
+        public EntityCommandBuffer ECB;
+        [ReadOnly]public NativeQuadTree<BasicAttributeData> QuadTree;
+        [ReadOnly]public NativeArray<BasicAttributeData> AllData;
+        [ReadOnly]public NativeArray<Entity> entityArr;
+        [ReadOnly]public float time;
+        //谁来查
+        public BasicAttributeData dataArr;
+        public int coreIndex;
+        public void Execute() {
+            var tempList = new NativeList<QuadElement<BasicAttributeData>>(Allocator.Temp);
+            var entity = entityArr[coreIndex];
+            var data = dataArr;
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
+            QuadTree.RangeQuery(
+                    //QuadTree,
+                    //    new QueryInfo()
+                    //    {
+                    //        type = QueryType.Include,
+                    //        targetType = DataType.Enemy,
+                    //        selfIndex = coreIndex,
+                    //    },
+                    new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                    tempList);
+            var filterList = new NativeList<QuadElement<BasicAttributeData>>(Allocator.Temp);
+            foreach (var item in tempList) {
+                if (item.element.Type == DataType.Enemy) {
+                    filterList.Add(item);
+                }
+            }
+            //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
+            var q = QuadFindTurretSystem.FindMinTarget(filterList,data.CurrentPos);
+            if (q.QueryIndex >= 0) {
+                var targetData = AllData[q.QueryIndex];
+                data.IsBeAttack = true;
+                //敌人攻击防御塔
+                if (data.RemainAttackIntervalTime <= 0) {
+                    ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+                    {
+                        HP = data.CurrentAttack
+                    });
+                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                    var dir = targetData.CurrentPos - data.CurrentPos;
+                    if (math.length(dir) < float.Epsilon) {
+                        dir = math.up();
+                    }
+                    ECB.AppendToBuffer(entity, new CreateProjectBuffer
+                    {
+                        Type = ProjectileType.MachineGunBaseProjectile,
+                        MoveDir = math.normalize(dir),
+                        EndPos = targetData.CurrentPos,
+                        StartPos = float3.zero,
+                        Speed = 30
+                    });
+                } else {
+                    data.RemainAttackIntervalTime -= time;
+                }
+                ECB.SetComponent(entity, data);
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                ECB.SetComponent(entity, data);
+            }
+            tempList.Clear();
+            filterList.Clear();
+            tempList.Dispose();
+            filterList.Dispose();
         }
     }
 
@@ -159,21 +272,24 @@ namespace YY {
     public partial class CustomFixedStep025SimulationSystemGroup : ComponentSystemGroup {
         // 设置此组使用的时间步长，以秒为单位。默认值为 1/60 秒。
         // 此值将被限制在 [0.0001f ... 10.0f] 范围内。
-        public float Timestep {
-            get => RateManager != null ? RateManager.Timestep : 0;
-            set {
-                if (RateManager != null)
-                    RateManager.Timestep = value;
-            }
-        }
-        // Default constructor
+        //public float Timestep {
+        //    get => RateManager != null ? RateManager.Timestep : 0;
+        //    set {
+        //        if (RateManager != null)
+        //            RateManager.Timestep = value;
+        //    }
+        //}
+        //// Default constructor
+        //public CustomFixedStep025SimulationSystemGroup() {
+        //    float defaultFixedTimestep = 1.0f / 60.0f * 0.25f;//0.25秒执行一次
+        //                                                   // 将固定利率简单管理器设置为利率管理器并创建系统组分配器
+        //    SetRateManagerCreateAllocator(new RateUtils.FixedRateSimpleManager(defaultFixedTimestep));
+        //}
         public CustomFixedStep025SimulationSystemGroup() {
-            float defaultFixedTimestep = 1.0f / 60.0f * 0.25f;//0.25秒执行一次
-            // 将固定利率简单管理器设置为利率管理器并创建系统组分配器
-            SetRateManagerCreateAllocator(new RateUtils.FixedRateSimpleManager(defaultFixedTimestep));
+            RateManager = new RateUtils.VariableRateManager(250, true);//设置速率为0.25秒 执行一次
         }
-
     }
+
     #region test query
     [BurstCompile]
     public partial struct TestQuadFindTurretJob : IJob {

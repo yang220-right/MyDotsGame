@@ -1,12 +1,8 @@
 ﻿using System;
-using System.ComponentModel;
-using System.Linq;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine;
-using static UnityEditor.Progress;
+using YY.MainGame;
 
 namespace NativeQuadTree {
     // 表示四叉树中的一个元素节点。
