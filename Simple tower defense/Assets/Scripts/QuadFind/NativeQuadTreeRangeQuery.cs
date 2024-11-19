@@ -57,12 +57,13 @@ namespace NativeQuadTree {
                         var node = UnsafeUtility.ReadArrayElement<QuadNode>(tree.nodes->Ptr, at);
                         //压边界情况 如果最后一层,还是包含,则说明压边界
                         if (contained && depth != tree.maxDepth) {
+                            //当前索引
                             var index = (void*) ((IntPtr) tree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement<T>>());
-
+                            //copy  从index复制node.count个数据给fastResults
                             UnsafeUtility.MemCpy((void*)((IntPtr)fastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement<T>>()),
                                 index, node.count * UnsafeUtility.SizeOf<QuadElement<T>>());
                             count += node.count;
-                        } else if(!contained || depth == tree.maxDepth) {
+                        } else if (!contained || depth == tree.maxDepth) {
                             for (int k = 0; k < node.count; k++) {
                                 var element = UnsafeUtility.ReadArrayElement<QuadElement<T>>(tree.elements->Ptr, node.firstChildIndex + k);
                                 if (bounds.Contains(element.pos)) {

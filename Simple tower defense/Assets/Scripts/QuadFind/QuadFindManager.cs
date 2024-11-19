@@ -116,22 +116,28 @@ namespace YY.MainGame {
             elements.Dispose();
             ecb.Dispose();
         }
-        public static QueryResultDispose FindMinTarget(NativeList<QuadElement<BasicAttributeData>> tempList, float3 comparePos) {
+        public static QueryResultDispose FindMinTarget(NativeList<QuadElement<BasicAttributeData>> tempList, float3 comparePos,int allNum) {
             var q= new QueryResultDispose()
             {
                 MinValue = float.MaxValue,
                 QueryIndex = -1
             };
-
+            int currentIndex = 0;
             foreach (var item in tempList) {
                 var dis = math.distancesq(item.element.CurrentPos,comparePos);
                 //排除未初始化的搜索的实体
-                if (dis < q.MinValue && item.selfIndex >=0 && item.selfIndex < tempList.Length) {
-                    q.MinValue = dis;
-                    q.NearPos = item.element.CurrentPos;
-                    q.QueryIndex = item.selfIndex;
-                    q.SelfIndex = item.queryIndex;
+                if (dis < q.MinValue) {
+                    if (item.selfIndex < 0 || item.selfIndex >= allNum) {
+                        currentIndex = currentIndex;//未初始化!根据index检查查询逻辑
+                    } else {
+
+                        q.MinValue = dis;
+                        q.NearPos = item.element.CurrentPos;
+                        q.QueryIndex = item.selfIndex;
+                        q.SelfIndex = item.queryIndex;
+                    }
                 }
+                ++currentIndex;
             }
             return q;
         }
@@ -168,7 +174,7 @@ namespace YY.MainGame {
                         new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
                         tempList);
                 //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
-                var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos);
+                var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos,AllData.Length);
                 if (q.QueryIndex >= 0) {
                     var targetData = AllData[q.QueryIndex];
                     //敌人攻击防御塔
@@ -219,7 +225,7 @@ namespace YY.MainGame {
             }, ref tempList);
 
             //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
-            var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos);
+            var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos,AllData.Length);
             if (q.QueryIndex >= 0) {
                 var targetData = AllData[q.QueryIndex];
                 data.IsBeAttack = true;
