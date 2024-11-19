@@ -18,7 +18,7 @@ namespace NativeQuadTree {
             Center = center;
             Extents = extents;
         }
-
+        //没有压边界,不妥!
         public bool Contains(float2 point) {
             if (point[0] < Center[0] - Extents[0]) {
                 return false;

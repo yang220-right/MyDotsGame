@@ -68,6 +68,7 @@ namespace YY.Enemy {
                                     ECB.AddComponent(index, e, new BasicAttributeData
                                     {
                                         CurrentPos = item.Pos,
+                                        //CurrentPos = float3.zero,
                                         Type = DataType.Enemy,
                                     });
                                     ECB.AddComponent(index, e,new BaseEnemyData()

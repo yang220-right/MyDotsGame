@@ -74,6 +74,7 @@ namespace YY.MainGame {
             }
             if (turretID.Length >= 1 && turretID[^1] == 0 || enemyID.Length >= 1 && enemyID[^1] == 0) {
                 //id如果不一致,直接歇逼
+                int a = 1;
             }
             //清除并重新排序
             quadTree.ClearAndBulkInsert(elements);
@@ -123,11 +124,9 @@ namespace YY.MainGame {
             };
 
             foreach (var item in tempList) {
-                if (item.element.Type == DataType.Core) {
-                    int a = 0;
-                }
                 var dis = math.distancesq(item.element.CurrentPos,comparePos);
-                if (dis < q.MinValue) {
+                //排除未初始化的搜索的实体
+                if (dis < q.MinValue && item.selfIndex >=0 && item.selfIndex < tempList.Length) {
                     q.MinValue = dis;
                     q.NearPos = item.element.CurrentPos;
                     q.QueryIndex = item.selfIndex;
@@ -211,24 +210,16 @@ namespace YY.MainGame {
             var data = dataArr;
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-            QuadTree.RangeQuery(
-                    //QuadTree,
-                    //    new QueryInfo()
-                    //    {
-                    //        type = QueryType.Include,
-                    //        targetType = DataType.Enemy,
-                    //        selfIndex = coreIndex,
-                    //    },
-                    new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
-                    tempList);
-            var filterList = new NativeList<QuadElement<BasicAttributeData>>(Allocator.Temp);
-            foreach (var item in tempList) {
-                if (item.element.Type == DataType.Enemy) {
-                    filterList.Add(item);
-                }
-            }
+            QuadTree.RangeQuery(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange), tempList);
+            QuadTree.FilterResult(new QueryInfo()
+            {
+                type = QueryType.Include,
+                targetType = DataType.Enemy,
+                selfIndex = coreIndex,
+            }, ref tempList);
+
             //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
-            var q = QuadFindTurretSystem.FindMinTarget(filterList,data.CurrentPos);
+            var q = QuadFindTurretSystem.FindMinTarget(tempList,data.CurrentPos);
             if (q.QueryIndex >= 0) {
                 var targetData = AllData[q.QueryIndex];
                 data.IsBeAttack = true;
@@ -261,9 +252,7 @@ namespace YY.MainGame {
                 ECB.SetComponent(entity, data);
             }
             tempList.Clear();
-            filterList.Clear();
             tempList.Dispose();
-            filterList.Dispose();
         }
     }
 

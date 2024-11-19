@@ -66,7 +66,7 @@ namespace YY.MainGame {
                     data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                     data.BaseAttack = 2;
                     data.CurrentAttack = data.BaseAttack;
-                    data.CurrentAttackRange = 0;
+                    data.CurrentAttackRange = 2;
                 }
 
                 var posY = trans.Position.y;

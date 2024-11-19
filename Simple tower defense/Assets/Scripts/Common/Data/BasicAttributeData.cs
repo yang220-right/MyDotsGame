@@ -28,7 +28,6 @@ namespace YY.MainGame {
         public bool IsBeAttack;
 
         public float3 CurrentPos;
-
     }
 
     public partial struct ReduceHPBuffer : IBufferElementData {

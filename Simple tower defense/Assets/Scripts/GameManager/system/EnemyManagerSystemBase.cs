@@ -20,7 +20,6 @@ namespace YY.MainGame {
             }
             if (flag && currentTime <= 0) {
                 currentTime = 0.2f;
-                var coreData = EntityManager.GetComponentData<BasicAttributeData>(core);
                 var random = Unity.Mathematics.Random.CreateFromIndex(generatorNum);
 
                 float baseDis = 30;

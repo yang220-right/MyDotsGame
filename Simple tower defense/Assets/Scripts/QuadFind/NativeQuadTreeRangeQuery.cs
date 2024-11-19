@@ -55,14 +55,14 @@ namespace NativeQuadTree {
                         RecursiveRangeQuery(childBounds, contained, at + 1, depth + 1);
                     } else if (elementCount != 0) {
                         var node = UnsafeUtility.ReadArrayElement<QuadNode>(tree.nodes->Ptr, at);
-
-                        if (contained) {
+                        //压边界情况 如果最后一层,还是包含,则说明压边界
+                        if (contained && depth != tree.maxDepth) {
                             var index = (void*) ((IntPtr) tree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement<T>>());
 
                             UnsafeUtility.MemCpy((void*)((IntPtr)fastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement<T>>()),
                                 index, node.count * UnsafeUtility.SizeOf<QuadElement<T>>());
                             count += node.count;
-                        } else {
+                        } else if(!contained || depth == tree.maxDepth) {
                             for (int k = 0; k < node.count; k++) {
                                 var element = UnsafeUtility.ReadArrayElement<QuadElement<T>>(tree.elements->Ptr, node.firstChildIndex + k);
                                 if (bounds.Contains(element.pos)) {
@@ -88,13 +88,16 @@ namespace NativeQuadTree {
 
             #region 拓展方法 
 
+            /// <summary>
+            /// 有bug 瞎几把乱查询
+            /// </summary>
             NativeQuadTree<BasicAttributeData> newTree;
             UnsafeList<BasicAttributeData>* newFastResults;
             public void Query(QueryInfo queryInfo, NativeQuadTree<BasicAttributeData> tree, AABB2D bounds, NativeList<QuadElement<BasicAttributeData>> results) {
                 this.newTree = tree;
                 this.bounds = bounds;
                 count = 0;
-
+                //NativeListUnsafeUtility.GetInternalListDataPtrUnchecked获取内部的原始指针
                 // 获取指向内部列表数据的指针以加快写入速度
                 newFastResults = (UnsafeList<BasicAttributeData>*)NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref results);
                 RecursiveRangeQuery(queryInfo, newTree.bounds, false, 1, 1);
@@ -111,11 +114,10 @@ namespace NativeQuadTree {
 
                     var contained = parentContained;
                     if (!contained) {
-                        if (bounds.Contains(childBounds)) {
+                        if (bounds.Contains(childBounds))
                             contained = true;
-                        } else if (!bounds.Intersects(childBounds)) {
+                        else if (!bounds.Intersects(childBounds))
                             continue;
-                        }
                     }
 
                     var at = prevOffset + l * depthSize;
