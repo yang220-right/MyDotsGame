@@ -7,7 +7,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 enum testType {
-    noe, tow, tree
+    one, tow, tree
 }
 struct testData {
     public int a;
@@ -52,7 +52,7 @@ public class QuadTreeTests : MonoBehaviour {
         }
         var incomingElements = new NativeArray<QuadElement<testData>>(go.x * go.y,Allocator.Temp);
         for (int i = 0; i < testDatas.Length; i++) {
-            incomingElements[i] = new QuadElement<testData>() { pos = go.pos1, element = new testData { a = 1, hp = i * 123, type = testType.noe } };
+            incomingElements[i] = new QuadElement<testData>() { pos = go.pos1, element = new testData { a = 1, hp = i * 123, type = testType.one } };
         }
         //incomingElements[0] = new QuadElement<testData>() { pos = go.pos1, element = new testData { a = 1, hp = 123, type = testType.noe } };
         //incomingElements[1] = new QuadElement<testData>() { pos = go.pos2, element = new testData { a = 2, hp = 15, type = testType.tow } };
@@ -98,7 +98,7 @@ public class QuadTreeTests : MonoBehaviour {
                 //Debug.Log($"节点总数:{mortonCodes[i]} atIndex {atIndex}");
             }
         }
-        elements->Capacity = (int)(go.x * go.y - 1);
+        elements->Capacity = (int)(go.x * go.y * 1.25f);
         RecursivePrepareLeaves(1, 1);
         // 将元素添加到叶节点
         for (var i = 0; i < incomingElements.Length; i++) {
@@ -126,7 +126,12 @@ public class QuadTreeTests : MonoBehaviour {
         //开始查询
         int count = 0;
         NativeList<QuadElement<testData>> resultList = new NativeList<QuadElement<testData>>(Allocator.Temp);
+        NativeList<QuadElement<testData>> resultListTest = new NativeList<QuadElement<testData>>(Allocator.Temp);
+        resultList.Capacity = go.x * go.y;
+        resultListTest.Capacity = go.x * go.y;
+        //返回指向此列表的内部不安全列表的指针。
         UnsafeList<QuadElement<testData>>* fastResults = (UnsafeList<QuadElement<testData>>*)NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref resultList);
+        UnsafeList<QuadElement<testData>>* fastResultsTest = (UnsafeList<QuadElement<testData>>*)NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref resultListTest);
         RecursiveRangeQuery(Bounds, false, 1, 1);
         fastResults->Length = count;
 
@@ -137,6 +142,18 @@ public class QuadTreeTests : MonoBehaviour {
                 Debug.Log($"pos:{item.pos} 当前temp的Index{ttindex} 数据{item.element.a}-{item.element.hp}-{item.element.type}");
             }
             ttindex++;
+            //Debug.Log($"pos:{item.pos} 数据{item.element.a}-{item.element.hp}-{item.element.type}");
+        }
+        for (int i = 0; i < go.x * go.y; ++i) {
+            *(fastResultsTest->Ptr + i) = new QuadElement<testData> { element = new testData() { a = 1, hp = 1, type = testType.one }, pos = new float2(1, 1) };
+        }
+        fastResultsTest->Length = go.x * go.y;
+        int ttindexText = 0;
+        foreach (var item in resultListTest) {
+            if (item.element.a > 10) {
+                Debug.Log($"Test--pos:{item.pos} 当前temp的Index{ttindex} 数据{item.element.a}-{item.element.hp}-{item.element.type}");
+            }
+            ttindexText++;
             //Debug.Log($"pos:{item.pos} 数据{item.element.a}-{item.element.hp}-{item.element.type}");
         }
 
