@@ -135,7 +135,6 @@ public class QuadTreeTests : MonoBehaviour {
         RecursiveRangeQuery(Bounds, false, 1, 1);
         fastResults->Length = count;
 
-
         int ttindex = 0;
         foreach (var item in resultList) {
             if (item.element.a > 10) {
@@ -194,6 +193,8 @@ public class QuadTreeTests : MonoBehaviour {
                     //    }
                     //} else {
                     //压边界情况 如果最后一层,还是包含,则说明压边界
+
+                   
                     if (contained && depth != 6) {
                         //当前索引
                         var index = (void*) ((IntPtr) elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement<testData>>());

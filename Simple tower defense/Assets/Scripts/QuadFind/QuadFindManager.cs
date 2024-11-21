@@ -211,7 +211,8 @@ namespace YY.MainGame {
         public BasicAttributeData dataArr;
         public int coreIndex;
         public void Execute() {
-            var tempList = new NativeList<QuadElement<BasicAttributeData>>(Allocator.Temp);
+            //这里必须指定大小足够大,否则数据错乱
+            var tempList = new NativeList<QuadElement<BasicAttributeData>>(AllData.Length,Allocator.Temp);
             var entity = entityArr[coreIndex];
             var data = dataArr;
             //查询条件

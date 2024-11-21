@@ -67,8 +67,8 @@ namespace YY.Enemy {
                                     var e = ECB.Instantiate(index, EnemyPrefabData.BaseCubePrefab);
                                     ECB.AddComponent(index, e, new BasicAttributeData
                                     {
-                                        //CurrentPos = item.Pos,
-                                        CurrentPos = float3.zero,
+                                        CurrentPos = item.Pos,
+                                        //CurrentPos = float3.zero,
                                         Type = DataType.Enemy,
                                     });
                                     ECB.AddComponent(index, e,new BaseEnemyData()
