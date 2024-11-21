@@ -34,6 +34,7 @@ namespace NativeQuadTree {
                 }
 
                 var depthSize = LookupTables.DepthSizeLookup[tree.maxDepth - depth+1];
+                //四个块查询
                 for (int l = 0; l < 4; l++) {
                     var childBounds = GetChildBounds(parentBounds, l);
 
