@@ -58,6 +58,7 @@ namespace YY.Turret {
                                 ECB.AddComponent<BaseTurretData>(index, e);
                                 ECB.AddComponent<TurretTag>(index, e);
                                 ECB.AddBuffer<ReduceHPBuffer>(index, e);
+                                ECB.AddBuffer<CreateProjectBuffer>(index, e);
                                 ECB.SetEnabled(index, e, false);
                                 break;
                             }

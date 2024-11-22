@@ -41,14 +41,14 @@ namespace YY.MainGame {
                 if (data.Init) return;
                 data.Init = true;
                 if (data.Type == DataType.Turret) {
-                    data.MaxHP = 10;
+                    data.MaxHP = 1000;
                     data.CurrentHP = data.MaxHP;
-                    data.BaseAttackInterval = 2;
+                    data.BaseAttackInterval = 0.1f;
                     data.CurrentAttackInterval = data.BaseAttackInterval;
                     data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                     data.BaseAttack = 2;
                     data.CurrentAttack = data.BaseAttack;
-                    data.CurrentAttackRange = 3;
+                    data.CurrentAttackRange = 15;
                 } else if (data.Type == DataType.Core) {
                     data.MaxHP = 100000;
                     data.CurrentHP = data.MaxHP;
