@@ -16,14 +16,14 @@ namespace YY.MainGame {
                 ECB = ecb.AsParallelWriter()
             }.Schedule(state.Dependency);
             state.CompleteDependency();
-
             ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
     public partial struct DeadJob : IJobEntity {
         public EntityCommandBuffer.ParallelWriter ECB;
-        public void Execute([EntityIndexInQuery]int index,Entity e,in BasicAttributeData data) {
-            if(data.CurrentHP <= 0) {
+        public void Execute([EntityIndexInQuery] int index, Entity e, in BasicAttributeData data) {
+            if (data.CurrentHP <= 0) {
                 ECB.DestroyEntity(index, e);
             }
         }

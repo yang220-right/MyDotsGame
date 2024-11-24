@@ -36,7 +36,7 @@ namespace YY.MainGame {
 
                 ++generatorNum;
             }
-            
+
             currentTime -= SystemAPI.Time.DeltaTime;
         }
     }

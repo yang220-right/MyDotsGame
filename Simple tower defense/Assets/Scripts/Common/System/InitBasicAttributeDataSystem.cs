@@ -7,16 +7,16 @@ using Unity.Transforms;
 namespace YY.MainGame {
     [UpdateBefore(typeof(TransformSystemGroup))]
     [BurstCompile]
-    public partial struct InitTurretManagerSystem : ISystem {
-        private EntityQuery TurretQuery;
+    public partial struct InitBasicAttributeDataSystem : ISystem {
+        private EntityQuery AllDataQuery;
         public void OnCreate(ref SystemState state) {
-            var build = new EntityQueryBuilder(Allocator.TempJob)
+            var build = new EntityQueryBuilder(Allocator.Temp)
             .WithAll<BasicAttributeData>()
             .WithAll<LocalTransform>()
             .WithOptions(EntityQueryOptions.IncludeDisabledEntities);
             ;
-            TurretQuery = build.Build(state.EntityManager);
-            state.RequireForUpdate(TurretQuery);
+            AllDataQuery = build.Build(state.EntityManager);
+            state.RequireForUpdate(AllDataQuery);
         }
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
@@ -24,10 +24,9 @@ namespace YY.MainGame {
             state.Dependency = new InitBasicAttributeDataJob()
             {
                 ECB = ecb.AsParallelWriter()
-            }.ScheduleParallel(TurretQuery, state.Dependency);
+            }.ScheduleParallel(AllDataQuery, state.Dependency);
             state.CompleteDependency();
             ecb.Playback(state.EntityManager);
-
             ecb.Dispose();
         }
 

@@ -5,7 +5,7 @@ using YY.MainGame;
 using YY.Projectile;
 
 namespace YY.Turret {
-    [UpdateBefore(typeof(InitTurretManagerSystem))]
+    [UpdateBefore(typeof(InitBasicAttributeDataSystem))]
     public partial struct CreateTurretSystem : ISystem {
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {

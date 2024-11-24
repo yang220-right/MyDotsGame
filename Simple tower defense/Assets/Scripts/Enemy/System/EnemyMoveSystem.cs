@@ -6,25 +6,15 @@ using Unity.Transforms;
 using YY.MainGame;
 
 namespace YY.Enemy {
-    public partial struct EnemyManagerSysmtem : ISystem {
-
-    }
     public partial struct EnemyMoveSystem : ISystem {
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
-            var query = new EntityQueryBuilder(Allocator.TempJob)
-                .WithAll<BasicAttributeData>()
-                .WithAll<BaseEnemyData>()
-                .WithAll<LocalTransform>()
-
-                .Build(state.EntityManager)
-                ;
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
             state.Dependency = new MoveJob()
             {
                 ECB = ecb.AsParallelWriter(),
                 time = SystemAPI.Time.DeltaTime
-            }.Schedule(query, state.Dependency);
+            }.Schedule(state.Dependency);
             state.CompleteDependency();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

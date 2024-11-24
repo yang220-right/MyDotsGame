@@ -11,7 +11,7 @@ namespace YY.Enemy {
 
     public readonly partial struct EnemyAspect : IAspect {
         public readonly Entity entity;
-        public readonly RefRW<BaseEnemyData> enemyData;
+        public readonly RefRO<BaseEnemyData> enemyData;
         public readonly RefRW<BasicAttributeData> baseData;
 
         public readonly float3 MovePos => enemyData.ValueRO.MovePos;

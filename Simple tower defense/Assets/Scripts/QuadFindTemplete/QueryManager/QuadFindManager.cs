@@ -1,5 +1,4 @@
-using UnityEngine;
-using NativeQuadTree;
+using CustomQuadTree;
 using Unity.Entities;
 using Unity.Collections;
 using Unity.Jobs;
@@ -8,7 +7,10 @@ using Unity.Mathematics;
 using YY.Enemy;
 using YY.Projectile;
 using YY.Turret;
-using static UnityEngine.EventSystems.EventTrigger;
+using NativeQuadTree;
+using static CustomQuadTree.CustomNativeQuadTree;
+using Unity.Collections.LowLevel.Unsafe;
+
 
 namespace YY.MainGame {
     /// <summary>
@@ -49,14 +51,15 @@ namespace YY.MainGame {
                 data.pos = dataArr[i].CurrentPos.xz;
                 elements[i] = data;
             }
-            var quadTree = new NativeQuadTree<BasicAttributeData>(new AABB2D(0,100));
+            var quadTree = new CustomNativeQuadTree(new AABB2D(0,100));
+
             //并查集ID
             int currentIndex = 0;
             int turrentIndex = 0;
             var turretEntity = turretQuery.ToEntityArray(Allocator.Temp);
             var turretID = new NativeArray<int>(turretEntity.Length,Allocator.TempJob);
             int enemyIndex = 0;
-            var enemyEntity = enemyQuery.ToEntityArray(Allocator.TempJob);
+            var enemyEntity = enemyQuery.ToEntityArray(Allocator.Temp);
             var enemyID = new NativeArray<int>(enemyEntity.Length,Allocator.TempJob);
             var coreEntity = coreQuery.ToEntityArray(Allocator.Temp);
             int coreIndex = 0;
@@ -75,20 +78,24 @@ namespace YY.MainGame {
             }
             //清除并重新排序
             quadTree.ClearAndBulkInsert(elements);
+            //创建查询
+            var treeQuery = new CustomQuadTreeQuery().InitTree(quadTree);
 
             var ecb = new EntityCommandBuffer(Allocator.TempJob);
 
             //敌人查询最近防御塔
+            var enemyDataArr = enemyQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
+            var enemyQueryDataArr = enemyQuery.ToComponentDataArray<BaseEnemyData>(Allocator.TempJob);
             state.Dependency = new EnemyAttackJob()
             {
                 ECB = ecb,
-                QuadTree = quadTree,
+                TreeQuery = treeQuery,
                 AllData = dataArr,
                 entityArr = entityArr,
                 time = SystemAPI.Time.DeltaTime,
 
-                dataArr = enemyQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob),
-                queryDataArr = enemyQuery.ToComponentDataArray<BaseEnemyData>(Allocator.TempJob),
+                dataArr = enemyDataArr,
+                queryDataArr = enemyQueryDataArr,
                 dataIndexInAll = enemyID,
                 QueryNum = turretEntity.Length + coreEntity.Length,
             }.Schedule(state.Dependency);
@@ -98,7 +105,7 @@ namespace YY.MainGame {
                 state.Dependency = new CoreAttackJob()
                 {
                     ECB = ecb,
-                    QuadTree = quadTree,
+                    TreeQuery = treeQuery,
                     AllData = dataArr,
                     entityArr = entityArr,
                     time = SystemAPI.Time.DeltaTime,
@@ -109,27 +116,40 @@ namespace YY.MainGame {
                 state.CompleteDependency();
             }
             //防御塔查询敌人并攻击
+            var turretDataArr = turretQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
+            var turretQueryDataArr = turretQuery.ToComponentDataArray<BaseTurretData>(Allocator.TempJob);
             state.Dependency = new TurretAttackJob()
             {
                 ECB = ecb,
-                QuadTree = quadTree,
+                TreeQuery = treeQuery,
                 AllData = dataArr,
                 entityArr = entityArr,
                 time = SystemAPI.Time.DeltaTime,
 
-                dataArr = turretQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob),
-                queryDataArr = turretQuery.ToComponentDataArray<BaseTurretData>(Allocator.TempJob),
+                dataArr = turretDataArr,
+                queryDataArr = turretQueryDataArr,
                 dataIndexInAll = turretID,
                 QueryNum = enemyEntity.Length,
             }.Schedule(state.Dependency);
             state.CompleteDependency();
-
             ecb.Playback(state.EntityManager);
-            quadTree.Dispose();
-            elements.Dispose();
+
+            //allQuery.Dispose();
+            //enemyQuery.Dispose();
+            //turretQuery.Dispose();
             ecb.Dispose();
+            //turretID.Dispose();
+            //enemyID.Dispose();
+            //dataArr.Dispose();
+            //entityArr.Dispose();
+            //elements.Dispose();
+            //treeQuery.Dispose();
+            //enemyDataArr.Dispose();
+            //enemyQueryDataArr.Dispose();
+            //turretDataArr.Dispose();
+            //turretQueryDataArr.Dispose();
         }
-        public static QueryResultDispose FindMinTarget(NativeList<QuadElement<BasicAttributeData>> tempList, float3 comparePos) {
+        public static unsafe QueryResultDispose FindMinTarget(NativeList<QuadElement> tempList, float3 comparePos) {
             var q= new QueryResultDispose()
             {
                 MinValue = float.MaxValue,
@@ -153,7 +173,9 @@ namespace YY.MainGame {
     [BurstCompile]
     public partial struct EnemyAttackJob : IJob {
         public EntityCommandBuffer ECB;
-        [ReadOnly]public NativeQuadTree<BasicAttributeData> QuadTree;
+        //使用安全指针
+        [NativeDisableUnsafePtrRestriction]
+        [ReadOnly]public CustomQuadTreeQuery TreeQuery;
         [ReadOnly]public NativeArray<BasicAttributeData> AllData;
         [ReadOnly]public NativeArray<Entity> entityArr;
         [ReadOnly]public float time;
@@ -164,23 +186,22 @@ namespace YY.MainGame {
         [ReadOnly]public int QueryNum;//能够查询的最大数量
 
         [BurstCompile]
-        public void Execute() {
-            var tempList = new NativeList<QuadElement<BasicAttributeData>>(QueryNum,Allocator.Temp);
+        public unsafe void Execute() {
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
 
             for (int i = 0; i < dataArr.Length; i++) {
                 var data = dataArr[i];
                 var queryData = queryDataArr[i];
                 //查询条件
                 var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                QuadTree.FilterRangeQuery(QuadTree,
+                TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                        tempList,
                         new QueryInfo()
                         {
                             type = QueryType.Include,
                             targetType = DataType.Turret | DataType.Core,
                             selfIndex = dataIndexInAll[i]
-                        },
-                        new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
-                        tempList);
+                        });
                 //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
                 var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
                 if (q.QueryIndex >= 0) {
@@ -204,6 +225,7 @@ namespace YY.MainGame {
                 }
                 tempList.Clear();
             }
+            tempList.Dispose();
         }
     }
 
@@ -211,28 +233,30 @@ namespace YY.MainGame {
     [BurstCompile]
     public partial struct CoreAttackJob : IJob {
         public EntityCommandBuffer ECB;
-        [ReadOnly]public NativeQuadTree<BasicAttributeData> QuadTree;
+        [NativeDisableUnsafePtrRestriction]
+        [ReadOnly]public CustomQuadTreeQuery TreeQuery;
         [ReadOnly]public NativeArray<BasicAttributeData> AllData;
         [ReadOnly]public NativeArray<Entity> entityArr;
         [ReadOnly]public float time;
         //谁来查
         public BasicAttributeData dataArr;
         public int coreIndex;
-        public void Execute() {
+        public unsafe void Execute() {
             //这里必须指定大小足够大,否则数据错乱
-            var tempList = new NativeList<QuadElement<BasicAttributeData>>(AllData.Length,Allocator.Temp);
+            var tempList = new NativeList<QuadElement>(AllData.Length,Allocator.Temp);
             var entity = entityArr[coreIndex];
             var data = dataArr;
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-            QuadTree.RangeQuery(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange), tempList);
-            QuadTree.FilterResult(new QueryInfo()
-            {
-                type = QueryType.Include,
-                targetType = DataType.Enemy,
-                selfIndex = coreIndex,
-            }, ref tempList);
-
+            TreeQuery.Q(
+                new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = coreIndex,
+                });
             //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
             var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
             if (q.QueryIndex >= 0) {
@@ -275,7 +299,8 @@ namespace YY.MainGame {
     public partial struct TurretAttackJob : IJob {
         //全部实体
         public EntityCommandBuffer ECB;
-        [ReadOnly]public NativeQuadTree<BasicAttributeData> QuadTree;
+        [NativeDisableUnsafePtrRestriction]
+        [ReadOnly]public CustomQuadTreeQuery TreeQuery;
         [ReadOnly]public NativeArray<BasicAttributeData> AllData;
         [ReadOnly]public NativeArray<Entity> entityArr;
         //谁来查
@@ -285,21 +310,22 @@ namespace YY.MainGame {
         [ReadOnly] public int QueryNum;
         [ReadOnly]public float time;
         [BurstCompile]
-        public void Execute() {
-            var tempList = new NativeList<QuadElement<BasicAttributeData>>(QueryNum,Allocator.Temp);
+        public unsafe void Execute() {
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
 
             for (int i = 0; i < dataArr.Length; i++) {
                 var data = dataArr[i];
                 var queryData = queryDataArr[i];
                 //查询条件
                 var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                QuadTree.RangeQuery(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange), tempList);
-                QuadTree.FilterResult(new QueryInfo()
-                {
-                    type = QueryType.Include,
-                    targetType = DataType.Enemy,
-                    selfIndex = dataIndexInAll[i],
-                }, ref tempList);
+                TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                    tempList,
+                    new QueryInfo()
+                    {
+                        type = QueryType.Include,
+                        targetType = DataType.Enemy,
+                        selfIndex = dataIndexInAll[i],
+                    });
                 //执行查询逻辑
                 var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
 
@@ -364,57 +390,57 @@ namespace YY.MainGame {
         }
     }
 
-    #region test query
-    [BurstCompile]
-    public partial struct TestQueryBestNearJob : IJob {
-        //全部实体
-        public EntityCommandBuffer ECB;
-        public NativeQuadTree<BasicAttributeData> QuadTree;
-        public NativeArray<BasicAttributeData> AllData;
-        public NativeArray<Entity> entityArr;
-        //谁来查
-        public NativeArray<BasicAttributeData> dataArr;
-        public NativeArray<BaseTurretData> queryDataArr;
-        [BurstCompile]
-        public void Execute() {
-            var tempList = new NativeList<QuadElement<BasicAttributeData>>(Allocator.Temp);
+    //#region test query
+    //[BurstCompile]
+    //public partial struct TestQueryBestNearJob : IJob {
+    //    //全部实体
+    //    public EntityCommandBuffer ECB;
+    //    [NativeDisableUnsafePtrRestriction]
+    //    public CustomQuadTreeQuery TreeQuery;
+    //    public NativeArray<BasicAttributeData> AllData;
+    //    public NativeArray<Entity> entityArr;
+    //    //谁来查
+    //    public NativeArray<BasicAttributeData> dataArr;
+    //    public NativeArray<BaseTurretData> queryDataArr;
+    //    [BurstCompile]
+    //    public void Execute() {
+    //        var tempList = new NativeList<QuadElement>(Allocator.Temp);
 
-            for (int i = 0; i < dataArr.Length; i++) {
-                var data = dataArr[i];
-                var queryData = queryDataArr[i];
-                //查询条件
-                var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                QuadTree.FilterRangeQuery(QuadTree,
-                        new QueryInfo()
-                        {
-                            type = QueryType.Include,
-                            targetType = DataType.Enemy,
-                        },
-                        new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
-                        tempList);
-                //执行查询逻辑
-                float minValue = float.MaxValue;
-                int nearIndex = -1;
-                float3 nearPos = 0;
-                foreach (var item in tempList) {
-                    var dis = math.distancesq(item.element.CurrentPos,data.CurrentPos);
-                    if (dis < minValue) {
-                        minValue = dis;
-                        nearPos = item.element.CurrentPos;
-                        nearIndex = item.selfIndex;
-                    }
-                }
-                //执行查询结果,并应用
-                if (nearIndex != -1) {
-                    var tempData = AllData[nearIndex];
-                    tempData.CurrentHP = 444;
-                    queryData.NearEnemy = nearPos;
-                    ECB.SetComponent(entityArr[nearIndex], tempData);
-                }
-                tempList.Clear();
-            }
-            tempList.Dispose();
-        }
-    }
-    #endregion
+    //        for (int i = 0; i < dataArr.Length; i++) {
+    //            var data = dataArr[i];
+    //            var queryData = queryDataArr[i];
+    //            //查询条件
+    //            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
+    //            TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+    //                    tempList,
+    //                    new QueryInfo()
+    //                    {
+    //                        type = QueryType.Include,
+    //                        targetType = DataType.Enemy,
+    //                    });
+    //            //执行查询逻辑
+    //            float minValue = float.MaxValue;
+    //            int nearIndex = -1;
+    //            float3 nearPos = 0;
+    //            foreach (var item in tempList) {
+    //                var dis = math.distancesq(item.element.CurrentPos,data.CurrentPos);
+    //                if (dis < minValue) {
+    //                    minValue = dis;
+    //                    nearPos = item.element.CurrentPos;
+    //                    nearIndex = item.selfIndex;
+    //                }
+    //            }
+    //            //执行查询结果,并应用
+    //            if (nearIndex != -1) {
+    //                var tempData = AllData[nearIndex];
+    //                tempData.CurrentHP = 444;
+    //                queryData.NearEnemy = nearPos;
+    //                ECB.SetComponent(entityArr[nearIndex], tempData);
+    //            }
+    //            tempList.Clear();
+    //        }
+    //        tempList.Dispose();
+    //    }
+    //}
+    //#endregion
 }
