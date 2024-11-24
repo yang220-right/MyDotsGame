@@ -1,43 +1,16 @@
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
-using UnityEngine;
 using YY.MainGame;
 
 namespace YY.Enemy {
-    public class EnemyManagerAuthroing : MonoBehaviour {
-        public List<GameObject> EnemyList;
-        public Vector3 GeneratorPos;
-    }
-    public partial class EnemyManagerBaker : Baker<EnemyManagerAuthroing> {
-        public override void Bake(EnemyManagerAuthroing authoring) {
-            var e = GetEntity(TransformUsageFlags.None);
-            AddComponent<BaseEnemyData>(e);
-            AddComponent(e, new EnemyPrefabData
-            {
-                BaseCubePrefab = GetEntity(authoring.EnemyList[0], TransformUsageFlags.Dynamic)
-            });
-            AddComponent<CreateEnemyBuffer>(e);
-        }
-    }
-
-    public partial struct EnemyPrefabData : IComponentData {
-        public Entity BaseCubePrefab;
-    }
-    public enum EnemyType {
-        BaseCube,
-    }
-    public partial struct CreateEnemyBuffer : IBufferElementData {
-        public EnemyType EnemyType;
-        public int Num;
-        public float3 Pos;
-    }
-
+    //不允许自动创建系统
+    //[DisableAutoCreation]
+    [UpdateInGroup(typeof(CreateBasicAttributeSystemGroup))]
     public partial struct CreateEnemySystem : ISystem {
+        public static CreateEnemySystem Ins;
         private void OnCreate(ref SystemState state) {
+            Ins = this;
             state.RequireForUpdate<CreateEnemyBuffer>();
         }
         [BurstCompile]
@@ -71,11 +44,11 @@ namespace YY.Enemy {
                                         //CurrentPos = float3.zero,
                                         Type = DataType.Enemy,
                                     });
-                                    ECB.AddComponent(index, e,new BaseEnemyData()
+                                    ECB.AddComponent(index, e, new BaseEnemyData()
                                     {
                                         Speed = 5,
                                     });
-                                    ECB.AddBuffer<ReduceHPBuffer>(index,e);
+                                    ECB.AddBuffer<ReduceHPBuffer>(index, e);
                                     ECB.SetEnabled(index, e, false);
                                     break;
                                 }

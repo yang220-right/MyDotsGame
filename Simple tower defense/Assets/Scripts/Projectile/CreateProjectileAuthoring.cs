@@ -8,11 +8,11 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace YY.Projectile {
-    public class ProjectileManagerAuthoring : MonoBehaviour {
+    public class CreateProjectileAuthoring : MonoBehaviour {
         public List<GameObject> ProjectilePrefab;
     }
-    public partial class ProjectileManagerBaker : Baker<ProjectileManagerAuthoring> {
-        public override void Bake(ProjectileManagerAuthoring authoring) {
+    public partial class CreateProjectileBaker : Baker<CreateProjectileAuthoring> {
+        public override void Bake(CreateProjectileAuthoring authoring) {
             var e = GetEntity(TransformUsageFlags.None);
             AddComponent(e, new ProjectilePrefabData
             {

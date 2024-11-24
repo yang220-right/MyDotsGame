@@ -2,10 +2,10 @@ using Unity.Entities;
 
 namespace YY.MainGame {
     public enum GameStateType {
-        BeginGame,
-        BeginOver,
+        Begin,
+        Over,
     }
     public partial struct GameControllerData : IComponentData {
-        public GameStateType gameStateType;
+        public GameStateType Type;
     }
 }

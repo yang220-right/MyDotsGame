@@ -367,29 +367,6 @@ namespace YY.MainGame {
         }
     }
 
-    [WorldSystemFilter(WorldSystemFilterFlags.Default | WorldSystemFilterFlags.Editor | WorldSystemFilterFlags.ThinClientSimulation)]
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup), OrderFirst = true)]
-    public partial class CustomFixedStep025SimulationSystemGroup : ComponentSystemGroup {
-        // 设置此组使用的时间步长，以秒为单位。默认值为 1/60 秒。
-        // 此值将被限制在 [0.0001f ... 10.0f] 范围内。
-        //public float Timestep {
-        //    get => RateManager != null ? RateManager.Timestep : 0;
-        //    set {
-        //        if (RateManager != null)
-        //            RateManager.Timestep = value;
-        //    }
-        //}
-        //// Default constructor
-        //public CustomFixedStep025SimulationSystemGroup() {
-        //    float defaultFixedTimestep = 1.0f / 60.0f * 0.25f;//0.25秒执行一次
-        //                                                   // 将固定利率简单管理器设置为利率管理器并创建系统组分配器
-        //    SetRateManagerCreateAllocator(new RateUtils.FixedRateSimpleManager(defaultFixedTimestep));
-        //}
-        public CustomFixedStep025SimulationSystemGroup() {
-            RateManager = new RateUtils.VariableRateManager(250, true);//设置速率为0.25秒 执行一次
-        }
-    }
-
     //#region test query
     //[BurstCompile]
     //public partial struct TestQueryBestNearJob : IJob {

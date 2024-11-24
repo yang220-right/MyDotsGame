@@ -3,6 +3,15 @@ using Unity.Mathematics;
 using YY.MainGame;
 
 namespace YY.Enemy {
+    public enum EnemyType {
+        BaseCube,
+    }
+    public partial struct CreateEnemyBuffer : IBufferElementData {
+        public EnemyType EnemyType;
+        public int Num;
+        public float3 Pos;
+    }
+
     public partial struct BaseEnemyData : IComponentData {
         public float Speed;
         public float3 MovePos;//想要到达的位置

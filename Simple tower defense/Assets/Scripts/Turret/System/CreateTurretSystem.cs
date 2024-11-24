@@ -6,6 +6,7 @@ using YY.Projectile;
 
 namespace YY.Turret {
     [UpdateBefore(typeof(InitBasicAttributeDataSystem))]
+    [UpdateInGroup(typeof(CreateBasicAttributeSystemGroup))]
     public partial struct CreateTurretSystem : ISystem {
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {

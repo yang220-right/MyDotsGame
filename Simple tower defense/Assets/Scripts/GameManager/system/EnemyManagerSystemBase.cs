@@ -7,11 +7,15 @@ using YY.Turret;
 namespace YY.MainGame {
     public partial class EnemyManagerSystemBase : SystemBase {
         protected override void OnCreate() {
+            RequireForUpdate<GameControllerData>();
         }
         uint generatorNum = 0;
         float currentTime;
         bool flag;
         protected override void OnUpdate() {
+            var data = SystemAPI.GetSingletonRW<GameControllerData>();
+            if (data.ValueRO.Type == GameStateType.Over) return;
+
             //先考虑一个核心的情况
             SystemAPI.TryGetSingletonEntity<BaseCoreTag>(out var core);
             if (core == null) return;
