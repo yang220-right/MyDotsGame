@@ -45,7 +45,8 @@ namespace YY.Projectile {
                                 DeadTime = 2,
                             });
                             var tempTrans = LocalTransform.FromPosition(item.StartPos);
-                            tempTrans.Rotation = quaternion.Euler(math.dot(math.forward(), item.MoveDir));
+                            tempTrans.Rotation = quaternion.LookRotation(item.MoveDir,math.up());
+
                             ECB.SetComponent(index, e, tempTrans);
                             ECB.SetEnabled(index, e, false);
                             break;

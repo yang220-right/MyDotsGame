@@ -31,6 +31,7 @@ namespace CustomQuadTree {
     }
     #endregion
     public unsafe partial struct CustomNativeQuadTree {
+        [BurstCompile]
         public struct CustomQuadTreeQuery : IDisposable {
             CustomNativeQuadTree tree;
             UnsafeList<BasicAttributeData>* fastResults;
