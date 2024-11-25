@@ -187,14 +187,14 @@ namespace YY.MainGame {
 
         [BurstCompile]
         public unsafe void Execute() {
-            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            var tempList = new NativeList<QuadElement>(AllData.Length,Allocator.Temp);
 
             for (int i = 0; i < dataArr.Length; i++) {
                 var data = dataArr[i];
                 var queryData = queryDataArr[i];
                 //查询条件
                 var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                TreeQuery.Q(aabb,
                         tempList,
                         new QueryInfo()
                         {
@@ -249,7 +249,7 @@ namespace YY.MainGame {
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
             TreeQuery.Q(
-                new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                aabb,
                 tempList,
                 new QueryInfo()
                 {
@@ -318,7 +318,8 @@ namespace YY.MainGame {
                 var queryData = queryDataArr[i];
                 //查询条件
                 var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+                TreeQuery.Q(
+                    aabb,
                     tempList,
                     new QueryInfo()
                     {

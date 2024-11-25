@@ -4,6 +4,9 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
 using Unity.Mathematics;
 using YY.MainGame;
+using Unity.Burst;
+using Unity.Entities.UniversalDelegates;
+using static UnityEngine.GraphicsBuffer;
 
 namespace CustomQuadTree {
     #region 拓展数据
@@ -33,23 +36,31 @@ namespace CustomQuadTree {
             UnsafeList<BasicAttributeData>* fastResults;
             int count;
             AABB2D bounds;
+            QueryInfo info;
             public CustomQuadTreeQuery InitTree(CustomNativeQuadTree tree) {
                 this.tree = tree;
                 return this;
             }
+            /// <summary>
+            /// 时刻要记住,查的是全部!!!
+            /// 所以如果数组超出,一定是容量不够,得扩大容量
+            /// </summary>
+            [BurstCompile]
             public void Q(AABB2D bounds, NativeList<QuadElement> results, QueryInfo info) {
-                Query(bounds, results);
-                results.FilterByInfo(info);
-            }
-
-            public void Query(AABB2D bounds, NativeList<QuadElement> results) {
+                //初始化值
                 this.bounds = bounds;
                 count = 0;
+                this.info = info;
                 fastResults = (UnsafeList<BasicAttributeData>*)NativeListUnsafeUtility.GetInternalListDataPtrUnchecked(ref results);
+                //开始查询
+                Query();
+            }
+            [BurstCompile]
+            public void Query() {
                 RecursiveRangeQuery(tree.bounds, false, 1, 1);
                 fastResults->Length = count;
             }
-
+            [BurstCompile]
             public void RecursiveRangeQuery(AABB2D parentBounds, bool parentContained, int prevOffset, int depth) {
                 if (count + 4 * tree.maxLeafElements > fastResults->Capacity)
                     fastResults->Resize(math.max(fastResults->Capacity * 2, count + 4 * tree.maxLeafElements));
@@ -70,14 +81,25 @@ namespace CustomQuadTree {
                     } else if (elementCount != 0) {
                         var node = UnsafeUtility.ReadArrayElement<QuadNode>(tree.nodes->Ptr, at);
                         if (contained) {
-                            var index = (void*) ((IntPtr) tree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement>());
-                            UnsafeUtility.MemCpy((void*)((IntPtr)fastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement>()),
-                                index, node.count * UnsafeUtility.SizeOf<QuadElement>());
-                            count += node.count;
+                            if(info.type == QueryType.All) {
+                                //更快查询
+                                var index = (void*) ((IntPtr) tree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement>());
+                                UnsafeUtility.MemCpy((void*)((IntPtr)fastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement>()),
+                                    index, node.count * UnsafeUtility.SizeOf<QuadElement>());
+                                count += node.count;
+                            } else {
+                                //这里使用过滤
+                                for (int k = 0; k < node.count; k++) {
+                                    var element = UnsafeUtility.ReadArrayElement<QuadElement>(tree.elements->Ptr, node.firstChildIndex + k);
+                                    if (!element.FilterCheck(info)) {
+                                        UnsafeUtility.WriteArrayElement(fastResults->Ptr, count++, element);
+                                    }
+                                }
+                            }
                         } else {
                             for (int k = 0; k < node.count; k++) {
                                 var element = UnsafeUtility.ReadArrayElement<QuadElement>(tree.elements->Ptr, node.firstChildIndex + k);
-                                if (bounds.Contains(element.pos)) {
+                                if (bounds.Contains(element.pos) && !element.FilterCheck(info)) {
                                     UnsafeUtility.WriteArrayElement(fastResults->Ptr, count++, element);
                                 }
                             }
@@ -85,6 +107,7 @@ namespace CustomQuadTree {
                     }
                 }
             }
+            [BurstCompile]
             AABB2D GetChildBounds(AABB2D parentBounds, int childZIndex) {
                 var half = parentBounds.Extents.x * .5f;
                 switch (childZIndex) {
@@ -98,33 +121,6 @@ namespace CustomQuadTree {
             public void Dispose() {
                 tree.Dispose();
                 fastResults = null;
-            }
-        }
-    }
-    public static class QuadFindExpand {
-        public static void FilterByInfo(this NativeList<QuadElement> results, QueryInfo info) {
-            for (int i = 0; i < results.Length; ++i) {
-                var element = results[i];
-                var targetData = element.element;
-                bool canRemove = false;
-                switch (info.type) {
-                    case QueryType.Include:
-                        canRemove = !((targetData.Type & info.targetType) == targetData.Type);
-                        break;
-                    case QueryType.FilterSelf:
-                        canRemove = (targetData.Type & info.targetType) == targetData.Type || element.selfIndex == info.selfIndex;
-                        break;
-                    case QueryType.Filter:
-                        canRemove = (targetData.Type & info.targetType) == targetData.Type;
-                        break;
-                    case QueryType.All:
-                        canRemove = false;
-                        break;
-                }
-                if (canRemove) {
-                    results.RemoveAt(i);
-                    --i;
-                }
             }
         }
     }

@@ -23,22 +23,22 @@ namespace YY.MainGame {
                 flag = !flag;
             }
             if (flag && currentTime <= 0) {
-                currentTime = 0.2f;
-                var random = Unity.Mathematics.Random.CreateFromIndex(generatorNum);
-
+                currentTime = 1f;
                 float baseDis = 30;
                 float minDis = 10;
                 float maxDis = 20;
                 var baseData = SystemAPI.GetSingletonBuffer<CreateEnemyBuffer>();
-                var dir =  random.NextFloat2Direction();
-                baseData.Add(new CreateEnemyBuffer
-                {
-                    EnemyType = EnemyType.BaseCube,
-                    Num = 1,
-                    Pos = new float3(dir.x, 0, dir.y) * (random.NextFloat(minDis, maxDis) + baseDis),
-                });
-
-                ++generatorNum;
+                for (int i = 0; i < data.ValueRO.GeneratorEnemyPerSeconds; i++) {
+                    var random = Unity.Mathematics.Random.CreateFromIndex(generatorNum);
+                    var dir =  random.NextFloat2Direction();
+                    baseData.Add(new CreateEnemyBuffer
+                    {
+                        EnemyType = EnemyType.BaseCube,
+                        Num = 1,
+                        Pos = new float3(dir.x, 0, dir.y) * (random.NextFloat(minDis, maxDis) + baseDis),
+                    });
+                    ++generatorNum;
+                }
             }
 
             currentTime -= SystemAPI.Time.DeltaTime;

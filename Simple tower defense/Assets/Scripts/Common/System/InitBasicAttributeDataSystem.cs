@@ -10,7 +10,7 @@ namespace YY.MainGame {
     public partial struct InitBasicAttributeDataSystem : ISystem {
         private EntityQuery AllDataQuery;
         public void OnCreate(ref SystemState state) {
-            var build = new EntityQueryBuilder(Allocator.Temp)
+            var build = new EntityQueryBuilder(Allocator.TempJob)
             .WithAll<BasicAttributeData>()
             .WithAll<LocalTransform>()
             .WithOptions(EntityQueryOptions.IncludeDisabledEntities);

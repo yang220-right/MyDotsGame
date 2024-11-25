@@ -4,7 +4,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using YY.MainGame;
 using NativeQuadTree;
-using UnityEngine;
+using Unity.Burst;
 
 namespace CustomQuadTree {
     public struct QuadElement {
@@ -14,6 +14,31 @@ namespace CustomQuadTree {
         //拓展属性
         public int selfIndex;       //自身index
         public int queryIndex;
+
+        /// <summary>
+        /// 是否需要过滤掉
+        /// </summary>
+        /// <param name="queryInfo"></param>
+        /// <returns></returns>
+        [BurstCompile]
+        public bool FilterCheck(QueryInfo queryInfo) {
+            bool pass = true;
+            switch (queryInfo.type) {
+                case QueryType.Include:
+                    pass = !((element.Type & queryInfo.targetType) == element.Type);  
+                    break;
+                case QueryType.FilterSelf:
+                    pass = (element.Type & queryInfo.targetType) == element.Type || selfIndex == queryInfo.selfIndex;
+                    break;
+                case QueryType.Filter:
+                    pass = (element.Type & queryInfo.targetType) == element.Type;
+                    break;
+                case QueryType.All:
+                    pass = false;
+                    break;
+            }
+            return pass;
+        }
     }
 
     public unsafe partial struct CustomNativeQuadTree : IDisposable {
@@ -128,7 +153,7 @@ namespace CustomQuadTree {
         /// 范围全部查询
         /// </summary>
         public void RangeQuery(AABB2D bounds, NativeList<QuadElement> results) {
-            new CustomQuadTreeQuery().InitTree(this).Query(bounds, results);
+            new CustomQuadTreeQuery().InitTree(this).Q(bounds, results, new QueryInfo { type = QueryType.All });
         }
 
         public void Clear() {
@@ -156,9 +181,9 @@ namespace CustomQuadTree {
             throw new IndexOutOfRangeException();
         }
         public void Q(AABB2D bounds, NativeList<QuadElement> results, QueryInfo info) {
-            new CustomQuadTreeQuery().InitTree(this).Query(bounds, results);
-            results.FilterByInfo(info);
+            new CustomQuadTreeQuery().InitTree(this).Q(bounds, results, info);
         }
+
         #endregion
     }
 }

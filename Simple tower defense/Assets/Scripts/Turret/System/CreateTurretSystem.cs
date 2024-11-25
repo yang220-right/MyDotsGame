@@ -5,7 +5,6 @@ using YY.MainGame;
 using YY.Projectile;
 
 namespace YY.Turret {
-    [UpdateBefore(typeof(InitBasicAttributeDataSystem))]
     [UpdateInGroup(typeof(CreateBasicAttributeSystemGroup))]
     public partial struct CreateTurretSystem : ISystem {
         [BurstCompile]
@@ -27,7 +26,7 @@ namespace YY.Turret {
     [BurstCompile]
     public partial struct CreateTurretJob : IJobEntity {
         public EntityCommandBuffer.ParallelWriter ECB;
-        public TurretPrefabData turretPrefabData;
+        [ReadOnly]public TurretPrefabData turretPrefabData;
         [BurstCompile]
         private void Execute([EntityIndexInQuery] int index,
             ref DynamicBuffer<CreateTurretBuffer> turretList) {

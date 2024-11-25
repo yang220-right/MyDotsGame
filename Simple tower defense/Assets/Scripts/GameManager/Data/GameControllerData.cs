@@ -7,5 +7,7 @@ namespace YY.MainGame {
     }
     public partial struct GameControllerData : IComponentData {
         public GameStateType Type;
+
+        public float GeneratorEnemyPerSeconds;
     }
 }
