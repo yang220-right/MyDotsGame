@@ -391,7 +391,6 @@ GameObject:
   - component: {fileID: 1077750407}
   - component: {fileID: 1077750406}
   - component: {fileID: 1077750410}
-  - component: {fileID: 1077750411}
   m_Layer: 0
   m_Name: Plane
   m_TagString: Untagged
@@ -495,23 +494,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1077750405}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b56505e0af390634b8298ee615eadcca, type: 3}
+  m_Script: {fileID: 11500000, guid: 601fbdaf9efb8cb438e39047817f6c10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Range: {x: 50, y: 1, z: 50}
---- !u!114 &1077750411
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1077750405}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1094362db481c4d4e985e762a3975b03, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  go: {fileID: 11400000, guid: dcace5c8f5f0f6b4eb5204428e7e5863, type: 2}
 --- !u!1 &1321527824
 GameObject:
   m_ObjectHideFlags: 0

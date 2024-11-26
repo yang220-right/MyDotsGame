@@ -1,8 +1,9 @@
 using Unity.Collections;
 using YY.MainGame;
 using CustomQuadTree;
+using Unity.VisualScripting;
 
-public partial struct DotsUtility {
+public static partial class DotsUtility {
     /// <summary>
     /// 并没有赋值位置,所以获得数据之后还得赋值位置
     /// </summary>
@@ -18,5 +19,8 @@ public partial struct DotsUtility {
             };
         }
         return elements;
+    }
+    public static bool CompareToBool(this float value, float compareTo) {
+        return (value - compareTo) < float.Epsilon;
     }
 }

@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using YY.MainGame;
 
 namespace YY.Enemy {
@@ -41,12 +42,14 @@ namespace YY.Enemy {
                                     ECB.AddComponent(index, e, new BasicAttributeData
                                     {
                                         CurrentPos = item.Pos,
-                                        //CurrentPos = float3.zero,
                                         Type = DataType.Enemy,
                                     });
-                                    ECB.AddComponent(index, e, new BaseEnemyData()
-                                    {
-                                        Speed = 5,
+                                    ECB.AddComponent(index, e, new BaseEnemyData()                                   );
+                                    ECB.AddComponent(index, e, new ShaderOverrideColor() { Value = new float4(1,0.6f,0.6f,1)});
+                                    ECB.AddComponent(index, e, new DamageColorData(){
+                                        BaseTime = 0.2f,
+                                        BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                                        CurrentColor = new float4(1, 0.6f, 0.6f, 1),
                                     });
                                     ECB.AddBuffer<ReduceHPBuffer>(index, e);
                                     ECB.SetEnabled(index, e, false);

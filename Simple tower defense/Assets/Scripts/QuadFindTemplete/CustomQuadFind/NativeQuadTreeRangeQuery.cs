@@ -5,8 +5,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using YY.MainGame;
 using Unity.Burst;
-using Unity.Entities.UniversalDelegates;
-using static UnityEngine.GraphicsBuffer;
+using YY.Turret;
 
 namespace CustomQuadTree {
     #region 拓展数据
@@ -15,7 +14,7 @@ namespace CustomQuadTree {
     /// </summary>
     public enum QueryType {
         Include,            //多目标查询
-        FilterSelf,    //查询某一目标并排除自己
+        FilterSelf,         //查询某一目标并排除自己
         Filter,             //过滤除了target的其他目标
         All,                //全部查询
     }
@@ -28,8 +27,17 @@ namespace CustomQuadTree {
         public DataType targetType;
         //查询时自身index
         public int selfIndex;
+        public float3 CurrentMinDisPos;
+        //查询类型
+        public AttackRangeType AttackType;
+        public float3 Pos;
+        public float3 CurrentAttackDir;//当前攻击方向
+        public float AttackCircle;//攻击半径
+        public float AttackRange;//范围
+        public float MaxNum;//最大查询人数
     }
     #endregion
+    [BurstCompile]
     public unsafe partial struct CustomNativeQuadTree {
         [BurstCompile]
         public struct CustomQuadTreeQuery : IDisposable {
@@ -82,7 +90,7 @@ namespace CustomQuadTree {
                     } else if (elementCount != 0) {
                         var node = UnsafeUtility.ReadArrayElement<QuadNode>(tree.nodes->Ptr, at);
                         if (contained) {
-                            if(info.type == QueryType.All) {
+                            if (info.type == QueryType.All) {
                                 //更快查询
                                 var index = (void*) ((IntPtr) tree.elements->Ptr + node.firstChildIndex * UnsafeUtility.SizeOf<QuadElement>());
                                 UnsafeUtility.MemCpy((void*)((IntPtr)fastResults->Ptr + count * UnsafeUtility.SizeOf<QuadElement>()),
@@ -92,7 +100,7 @@ namespace CustomQuadTree {
                                 //这里使用过滤
                                 for (int k = 0; k < node.count; k++) {
                                     var element = UnsafeUtility.ReadArrayElement<QuadElement>(tree.elements->Ptr, node.firstChildIndex + k);
-                                    if (!element.FilterCheck(info)) {
+                                    if (element.CheckPass(info)) {
                                         UnsafeUtility.WriteArrayElement(fastResults->Ptr, count++, element);
                                     }
                                 }
@@ -100,7 +108,7 @@ namespace CustomQuadTree {
                         } else {
                             for (int k = 0; k < node.count; k++) {
                                 var element = UnsafeUtility.ReadArrayElement<QuadElement>(tree.elements->Ptr, node.firstChildIndex + k);
-                                if (bounds.Contains(element.pos) && !element.FilterCheck(info)) {
+                                if (bounds.Contains(element.pos) && element.CheckPass(info)) {
                                     UnsafeUtility.WriteArrayElement(fastResults->Ptr, count++, element);
                                 }
                             }

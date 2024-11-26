@@ -10,6 +10,8 @@ using YY.Turret;
 using NativeQuadTree;
 using static CustomQuadTree.CustomNativeQuadTree;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Entities.UniversalDelegates;
+using Unity.VisualScripting;
 
 
 namespace YY.MainGame {
@@ -81,14 +83,16 @@ namespace YY.MainGame {
             //创建查询
             var treeQuery = new CustomQuadTreeQuery().InitTree(quadTree);
 
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
+            var ecbEnemyAttack = new EntityCommandBuffer(Allocator.TempJob);
+            var ecbCoreAttack = new EntityCommandBuffer(Allocator.TempJob);
+            var ecbTurretAttack = new EntityCommandBuffer(Allocator.TempJob);
 
             //敌人查询最近防御塔
             var enemyDataArr = enemyQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
             var enemyQueryDataArr = enemyQuery.ToComponentDataArray<BaseEnemyData>(Allocator.TempJob);
             state.Dependency = new EnemyAttackJob()
             {
-                ECB = ecb,
+                ECB = ecbEnemyAttack,
                 TreeQuery = treeQuery,
                 AllData = dataArr,
                 entityArr = entityArr,
@@ -100,11 +104,12 @@ namespace YY.MainGame {
                 QueryNum = turretEntity.Length + coreEntity.Length,
             }.Schedule(state.Dependency);
             state.CompleteDependency();
+            ecbEnemyAttack.Playback(state.EntityManager);
             if (coreQuery.CalculateEntityCount() > 0) {
                 //核心查询最近敌人
                 state.Dependency = new CoreAttackJob()
                 {
-                    ECB = ecb,
+                    ECB = ecbCoreAttack,
                     TreeQuery = treeQuery,
                     AllData = dataArr,
                     entityArr = entityArr,
@@ -114,13 +119,14 @@ namespace YY.MainGame {
                     coreIndex = coreIndex,
                 }.Schedule(state.Dependency);
                 state.CompleteDependency();
+                ecbCoreAttack.Playback(state.EntityManager);
             }
             //防御塔查询敌人并攻击
             var turretDataArr = turretQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
             var turretQueryDataArr = turretQuery.ToComponentDataArray<BaseTurretData>(Allocator.TempJob);
             state.Dependency = new TurretAttackJob()
             {
-                ECB = ecb,
+                ECB = ecbTurretAttack,
                 TreeQuery = treeQuery,
                 AllData = dataArr,
                 entityArr = entityArr,
@@ -132,22 +138,11 @@ namespace YY.MainGame {
                 QueryNum = enemyEntity.Length,
             }.Schedule(state.Dependency);
             state.CompleteDependency();
-            ecb.Playback(state.EntityManager);
+            ecbTurretAttack.Playback(state.EntityManager);
 
-            //allQuery.Dispose();
-            //enemyQuery.Dispose();
-            //turretQuery.Dispose();
-            ecb.Dispose();
-            //turretID.Dispose();
-            //enemyID.Dispose();
-            //dataArr.Dispose();
-            //entityArr.Dispose();
-            //elements.Dispose();
-            //treeQuery.Dispose();
-            //enemyDataArr.Dispose();
-            //enemyQueryDataArr.Dispose();
-            //turretDataArr.Dispose();
-            //turretQueryDataArr.Dispose();
+            ecbEnemyAttack.Dispose();
+            ecbCoreAttack.Dispose();
+            ecbTurretAttack.Dispose();
         }
         public static unsafe QueryResultDispose FindMinTarget(NativeList<QuadElement> tempList, float3 comparePos) {
             var q= new QueryResultDispose()
@@ -166,6 +161,9 @@ namespace YY.MainGame {
                 }
             }
             return q;
+        }
+        public static unsafe void FindMutipleTarget() {
+
         }
     }
 
@@ -193,7 +191,7 @@ namespace YY.MainGame {
                 var data = dataArr[i];
                 var queryData = queryDataArr[i];
                 //查询条件
-                var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
+                var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
                 TreeQuery.Q(aabb,
                         tempList,
                         new QueryInfo()
@@ -247,7 +245,7 @@ namespace YY.MainGame {
             var entity = entityArr[coreIndex];
             var data = dataArr;
             //查询条件
-            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
             TreeQuery.Q(
                 aabb,
                 tempList,
@@ -311,114 +309,208 @@ namespace YY.MainGame {
         [ReadOnly]public float time;
         [BurstCompile]
         public unsafe void Execute() {
-            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
 
             for (int i = 0; i < dataArr.Length; i++) {
                 var data = dataArr[i];
-                var queryData = queryDataArr[i];
-                //查询条件
-                var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-                TreeQuery.Q(
-                    aabb,
-                    tempList,
-                    new QueryInfo()
-                    {
-                        type = QueryType.Include,
-                        targetType = DataType.Enemy,
-                        selfIndex = dataIndexInAll[i],
-                    });
+                var turretData = queryDataArr[i];
                 //执行查询逻辑
-                var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
+                switch (turretData.Type) {
+                    case TurretType.GunTowers:
+                        GunTowersQuery(i, data, turretData);
+                        break;
+                    case TurretType.FireTowers:
+                        FireTowersQuery(i, data, turretData);
+                        break;
+                }
+            }
+        }
 
-                //执行查询结果,并应用
-                if (q.QueryIndex >= 0) {
-                    var targetData = AllData[q.QueryIndex];
-                    data.IsBeAttack = true;
-                    //攻击敌人
-                    if (data.RemainAttackIntervalTime <= 0) {
-                        ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+        public unsafe void GunTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = AttackRangeType.Single,
+                });
+            var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
+            //执行查询结果,并应用
+            if (q.QueryIndex >= 0) {
+                var targetData = AllData[q.QueryIndex];
+                data.IsBeAttack = true;
+                //攻击敌人
+                if (data.RemainAttackIntervalTime <= 0) {
+                    ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+                    {
+                        HP = data.CurrentAttack
+                    });
+                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                    var dir = targetData.CurrentPos - data.CurrentPos;
+                    if (math.length(dir) < float.Epsilon)
+                        dir = math.up();
+                    ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
+                    {
+                        Type = ProjectileType.MachineGunBaseProjectile,
+                        MoveDir = math.normalize(dir),
+                        EndPos = targetData.CurrentPos,
+                        StartPos = data.CurrentPos,
+                        Speed = 30
+                    });
+                } else {
+                    data.RemainAttackIntervalTime -= time;
+                }
+                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+            }
+            tempList.Clear();
+            tempList.Dispose();
+        }
+        public unsafe void FireTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                 new QueryInfo()
+                 {
+                     type = QueryType.Include,
+                     targetType = DataType.Enemy,
+                     selfIndex = dataIndexInAll[i],
+
+                     AttackType = AttackRangeType.Single,
+                     Pos = data.CurrentPos,
+                     MaxNum = 1,
+                 });
+            float3 Dir = float3.zero;
+            if (tempList.Length > 0) {
+                var minQ = QuadFindSystem.FindMinTarget(tempList, data.CurrentPos);
+                Dir = minQ.NearPos - data.CurrentPos;
+                Dir = math.normalize(Dir);
+                tempList.Clear();
+            }
+            if(Dir.Equals( float3.zero)) {
+                Dir.x = 1;
+            }
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = AttackRangeType.Fans,
+                    Pos = data.CurrentPos,
+                    CurrentAttackDir = Dir,
+                    AttackCircle = data.CurrentAttackCircle,
+                    AttackRange = 180,
+                    MaxNum = -1,
+                });
+            if (tempList.Length > 0) {
+                data.IsBeAttack = true;
+                if (data.RemainAttackIntervalTime <= 0) {
+                    for (int k = 0; k < tempList.Length; ++k) {
+                        var enemyResult = tempList[k];
+                        var targetData = AllData[enemyResult.selfIndex];
+                        ECB.AppendToBuffer(entityArr[enemyResult.selfIndex], new ReduceHPBuffer
                         {
                             HP = data.CurrentAttack
                         });
-                        data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                        var dir = targetData.CurrentPos - data.CurrentPos;
-                        if (math.length(dir) < float.Epsilon) {
-                            dir = math.up();
-                        }
-                        ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
+                        ECB.SetComponent(entityArr[enemyResult.selfIndex], new DamageColorData()
                         {
-                            Type = ProjectileType.MachineGunBaseProjectile,
-                            MoveDir = math.normalize(dir),
-                            EndPos = targetData.CurrentPos,
-                            StartPos = data.CurrentPos,
-                            Speed = 30
+                            IsChange = true,
+                            BaseTime = 0.2f,
+                            BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                            CurrentColor = new float4(1, 1, 1, 1),
                         });
-                    } else {
-                        data.RemainAttackIntervalTime -= time;
+                        data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                        //var dir = targetData.CurrentPos - data.CurrentPos;
+                        //if (math.length(dir) < float.Epsilon)
+                        //    dir = math.up();
+                        //ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
+                        //{
+                        //    Type = ProjectileType.MachineGunBaseProjectile,
+                        //    MoveDir = math.normalize(dir),
+                        //    EndPos = targetData.CurrentPos,
+                        //    StartPos = data.CurrentPos,
+                        //    Speed = 30
+                        //});
                     }
-                    ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
                 } else {
-                    data.IsBeAttack = false;
-                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                    ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+                    data.RemainAttackIntervalTime -= time;
                 }
-                tempList.Clear();
+                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                data.CurrentAttackDir = Dir;
+                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
             }
+            tempList.Clear();
             tempList.Dispose();
         }
+
+        //#region test query
+        //[BurstCompile]
+        //public partial struct TestQueryBestNearJob : IJob {
+        //    //全部实体
+        //    public EntityCommandBuffer ECB;
+        //    [NativeDisableUnsafePtrRestriction]
+        //    public CustomQuadTreeQuery TreeQuery;
+        //    public NativeArray<BasicAttributeData> AllData;
+        //    public NativeArray<Entity> entityArr;
+        //    //谁来查
+        //    public NativeArray<BasicAttributeData> dataArr;
+        //    public NativeArray<BaseTurretData> queryDataArr;
+        //    [BurstCompile]
+        //    public void Execute() {
+        //        var tempList = new NativeList<QuadElement>(Allocator.Temp);
+
+        //        for (int i = 0; i < dataArr.Length; i++) {
+        //            var data = dataArr[i];
+        //            var queryData = queryDataArr[i];
+        //            //查询条件
+        //            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
+        //            TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
+        //                    tempList,
+        //                    new QueryInfo()
+        //                    {
+        //                        type = QueryType.Include,
+        //                        targetType = DataType.Enemy,
+        //                    });
+        //            //执行查询逻辑
+        //            float minValue = float.MaxValue;
+        //            int nearIndex = -1;
+        //            float3 nearPos = 0;
+        //            foreach (var item in tempList) {
+        //                var dis = math.distancesq(item.element.CurrentPos,data.CurrentPos);
+        //                if (dis < minValue) {
+        //                    minValue = dis;
+        //                    nearPos = item.element.CurrentPos;
+        //                    nearIndex = item.selfIndex;
+        //                }
+        //            }
+        //            //执行查询结果,并应用
+        //            if (nearIndex != -1) {
+        //                var tempData = AllData[nearIndex];
+        //                tempData.CurrentHP = 444;
+        //                queryData.NearEnemy = nearPos;
+        //                ECB.SetComponent(entityArr[nearIndex], tempData);
+        //            }
+        //            tempList.Clear();
+        //        }
+        //        tempList.Dispose();
+        //    }
+        //}
+        //#endregion
     }
-
-    //#region test query
-    //[BurstCompile]
-    //public partial struct TestQueryBestNearJob : IJob {
-    //    //全部实体
-    //    public EntityCommandBuffer ECB;
-    //    [NativeDisableUnsafePtrRestriction]
-    //    public CustomQuadTreeQuery TreeQuery;
-    //    public NativeArray<BasicAttributeData> AllData;
-    //    public NativeArray<Entity> entityArr;
-    //    //谁来查
-    //    public NativeArray<BasicAttributeData> dataArr;
-    //    public NativeArray<BaseTurretData> queryDataArr;
-    //    [BurstCompile]
-    //    public void Execute() {
-    //        var tempList = new NativeList<QuadElement>(Allocator.Temp);
-
-    //        for (int i = 0; i < dataArr.Length; i++) {
-    //            var data = dataArr[i];
-    //            var queryData = queryDataArr[i];
-    //            //查询条件
-    //            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackRange);
-    //            TreeQuery.Q(new AABB2D(data.CurrentPos.xz, data.CurrentAttackRange),
-    //                    tempList,
-    //                    new QueryInfo()
-    //                    {
-    //                        type = QueryType.Include,
-    //                        targetType = DataType.Enemy,
-    //                    });
-    //            //执行查询逻辑
-    //            float minValue = float.MaxValue;
-    //            int nearIndex = -1;
-    //            float3 nearPos = 0;
-    //            foreach (var item in tempList) {
-    //                var dis = math.distancesq(item.element.CurrentPos,data.CurrentPos);
-    //                if (dis < minValue) {
-    //                    minValue = dis;
-    //                    nearPos = item.element.CurrentPos;
-    //                    nearIndex = item.selfIndex;
-    //                }
-    //            }
-    //            //执行查询结果,并应用
-    //            if (nearIndex != -1) {
-    //                var tempData = AllData[nearIndex];
-    //                tempData.CurrentHP = 444;
-    //                queryData.NearEnemy = nearPos;
-    //                ECB.SetComponent(entityArr[nearIndex], tempData);
-    //            }
-    //            tempList.Clear();
-    //        }
-    //        tempList.Dispose();
-    //    }
-    //}
-    //#endregion
 }

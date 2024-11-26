@@ -20,25 +20,11 @@ public partial class TurretManagerSystemBase : SystemBase {
                 var baseData = SystemAPI.GetSingletonBuffer<CreateTurretBuffer>();
                 baseData.Add(new CreateTurretBuffer
                 {
-                    type = TurretType.MachineGun,
+                    type = TurretType.FireTowers,
                     Num = 1,
                     Pos = pos,
                 });
             }
         }
-
-
-        if (Input.GetMouseButtonDown(1)) {
-            var coreData = SystemAPI.GetSingletonEntity<TurretBaseCoreData>();
-            EntityManager.AddBuffer<CreateProjectBuffer>(coreData).Add(new CreateProjectBuffer
-            {
-                Type = ProjectileType.MachineGunBaseProjectile,
-                MoveDir = math.left(),
-                EndPos = new float3(-10, 0, 0),
-                StartPos = float3.zero,
-                Speed = 2
-            });
-        }
-
     }
 }

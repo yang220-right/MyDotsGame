@@ -33,38 +33,37 @@ namespace YY.Turret {
             if (turretList.Length <= 0) return;
             foreach (var item in turretList) {
                 for (int i = 0; i < item.Num; i++) {
-                    switch (item.type) {
-                        case TurretType.Core: {
-                                var e = ECB.Instantiate(index, turretPrefabData.CorePrefab);
-                                ECB.AddComponent(index, e, new BasicAttributeData
-                                {
-                                    CurrentPos = item.Pos,
-                                    Type = DataType.Core,
-                                });
-                                ECB.AddComponent<TurretBaseCoreData>(index, e);
-                                ECB.AddComponent<BaseCoreTag>(index, e);
-                                ECB.AddBuffer<ReduceHPBuffer>(index, e);
-                                ECB.AddBuffer<CreateProjectBuffer>(index, e);
-                                ECB.SetEnabled(index, e, false);
+                    Entity e = default;
+                    var basicAttributeData = new BasicAttributeData(){
+                        CurrentPos = item.Pos
+                    };
+
+                    if (item.type == TurretType.Core) {
+                        e = ECB.Instantiate(index, turretPrefabData.CorePrefab);
+                        basicAttributeData.Type = DataType.Core;
+                        ECB.AddComponent(index, e, basicAttributeData);
+                        ECB.AddComponent<TurretBaseCoreData>(index, e);
+                        ECB.AddComponent<BaseCoreTag>(index, e);
+                    } else {
+                        var baseTurretData = new BaseTurretData();
+                        switch (item.type) {
+                            case TurretType.GunTowers:
+                                e = ECB.Instantiate(index, turretPrefabData.MachineGunBasePrefab);
                                 break;
-                            }
-                        case TurretType.MachineGun: {
-                                var e = ECB.Instantiate(index, turretPrefabData.MachineGunBasePrefab);
-                                ECB.AddComponent(index, e, new BasicAttributeData
-                                {
-                                    CurrentPos = item.Pos,
-                                    Type = DataType.Turret,
-                                });
-                                ECB.AddComponent<BaseTurretData>(index, e);
-                                ECB.AddComponent<TurretTag>(index, e);
-                                ECB.AddBuffer<ReduceHPBuffer>(index, e);
-                                ECB.AddBuffer<CreateProjectBuffer>(index, e);
-                                ECB.SetEnabled(index, e, false);
+                            case TurretType.FireTowers:
+                                e = ECB.Instantiate(index, turretPrefabData.FireTowersPrefab);
                                 break;
-                            }
-                        default:
-                            break;
+                        }
+                        //共同属性
+                        basicAttributeData.Type = DataType.Turret;
+                        baseTurretData.Type = item.type;
+                        ECB.AddComponent(index, e, basicAttributeData);
+                        ECB.AddComponent(index, e, baseTurretData);
+                        ECB.AddComponent<TurretTag>(index, e);
                     }
+                    ECB.AddBuffer<CreateProjectBuffer>(index, e);
+                    ECB.AddBuffer<ReduceHPBuffer>(index, e);
+                    ECB.SetEnabled(index, e, false);
                 }
             }
             turretList.Clear();

@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
 using YY.MainGame;
 
 namespace YY.Enemy {
@@ -47,5 +48,10 @@ namespace YY.Enemy {
         public readonly void MoveTo(float delTime) {
             baseData.ValueRW.CurrentPos += delTime * MoveDir;
         }
+    }
+
+    [MaterialProperty("_BaseColor")]
+    public partial struct ShaderOverrideColor : IComponentData {
+        public float4 Value;
     }
 }

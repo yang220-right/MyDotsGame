@@ -4,10 +4,12 @@ using Unity.Mathematics;
 public partial struct TurretPrefabData : IComponentData {
     public Entity CorePrefab;
     public Entity MachineGunBasePrefab;
+    public Entity FireTowersPrefab;
 }
 public enum TurretType {
     Core,
-    MachineGun,
+    GunTowers,
+    FireTowers
 }
 public partial struct CreateTurretBuffer : IBufferElementData {
     public TurretType type;

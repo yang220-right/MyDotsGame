@@ -5,6 +5,7 @@ using Unity.Entities;
 using UnityEngine;
 
 namespace YY.MainGame {
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
     public partial struct DeadSystem : ISystem {
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<BasicAttributeData>();

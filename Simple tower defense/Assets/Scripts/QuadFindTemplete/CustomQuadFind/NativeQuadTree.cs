@@ -5,8 +5,10 @@ using Unity.Mathematics;
 using YY.MainGame;
 using NativeQuadTree;
 using Unity.Burst;
+using YY.Turret;
 
 namespace CustomQuadTree {
+    [BurstCompile]
     public struct QuadElement {
         public float2 pos;
         public BasicAttributeData element;
@@ -21,23 +23,43 @@ namespace CustomQuadTree {
         /// <param name="queryInfo"></param>
         /// <returns></returns>
         [BurstCompile]
-        public bool FilterCheck(QueryInfo queryInfo) {
-            bool pass = true;
+        public bool CheckPass(QueryInfo queryInfo, int currentNum = 0) {
+            bool pass = false;
             switch (queryInfo.type) {
                 case QueryType.Include:
-                    pass = !((element.Type & queryInfo.targetType) == element.Type);  
-                    break;
-                case QueryType.FilterSelf:
-                    pass = (element.Type & queryInfo.targetType) == element.Type || selfIndex == queryInfo.selfIndex;
-                    break;
-                case QueryType.Filter:
                     pass = (element.Type & queryInfo.targetType) == element.Type;
                     break;
+                case QueryType.FilterSelf:
+                    pass = !((element.Type & queryInfo.targetType) == element.Type || selfIndex == queryInfo.selfIndex);
+                    break;
+                case QueryType.Filter:
+                    pass = !((element.Type & queryInfo.targetType) == element.Type);
+                    break;
                 case QueryType.All:
-                    pass = false;
+                    pass = true;
                     break;
             }
-            return pass;
+            //如果没有符合的,直接返回false
+            if (!pass) return false;
+            //单个查询直接返回
+            if (queryInfo.AttackType == AttackRangeType.Single)
+                return pass;
+            //检查是否符合范围 大于直接pass
+            if (math.distancesq(element.CurrentPos, queryInfo.Pos) < queryInfo.AttackCircle * queryInfo.AttackCircle)
+                return false;
+            if (queryInfo.AttackType == AttackRangeType.Fans) {
+                //以下为扇形查询
+                //检查是否在范围内
+                var deg = queryInfo.AttackRange / 2 * math.PI / 180f;//一半的弧度
+                var dir = math.normalize(queryInfo.Pos - element.CurrentPos);
+                var dotValue = math.dot(queryInfo.CurrentAttackDir,dir);
+                if (deg > dotValue) return true;
+            }
+            //检查是否最大人数
+            if (queryInfo.MaxNum <= 0) return pass;
+            if (queryInfo.MaxNum >= currentNum) return true;
+
+            return false;
         }
     }
 
@@ -54,7 +76,10 @@ namespace CustomQuadTree {
         short maxLeafElements;
         AABB2D bounds;
 
-        public CustomNativeQuadTree(AABB2D bounds, Allocator allocator = Allocator.Temp, int maxDepth = 6, short maxLeafElements = 16,
+        public CustomNativeQuadTree(AABB2D bounds,
+            Allocator allocator = Allocator.Temp,
+            int maxDepth = 6,
+            short maxLeafElements = 16,
             int initialElementsCapacity = 256
         ) : this() {
             this.bounds = bounds;
