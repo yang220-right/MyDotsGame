@@ -18,9 +18,9 @@ namespace YY.MainGame {
             if (data.IsChange) {
                 if (data.CurrentTime <= 0) {
                     color.Value = data.CurrentColor;
-                    data.IsChange = false;
                 }
                 data.CurrentTime = data.BaseTime;
+                data.IsChange = false;
             }
             if (data.CurrentTime > 0) {
                 data.CurrentTime -= time;
