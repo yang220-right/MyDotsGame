@@ -142,8 +142,8 @@ namespace YY.MainGame {
                         turretData.AttackType = AttackRangeType.Single;
                         break;
                     case TurretType.FireTowers:
-                        data.BaseAttackInterval = 0.5f;
-                        data.AttackAngle = 90;
+                        data.BaseAttackInterval = 2f;
+                        data.AttackAngle = 60;
                         turretData.AttackType = AttackRangeType.Fans;
                         break;
                 }

@@ -324,7 +324,7 @@ namespace YY.MainGame {
                 }
             }
         }
-
+        [BurstCompile]
         public unsafe void GunTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
             var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
             //查询条件
@@ -374,6 +374,7 @@ namespace YY.MainGame {
             tempList.Clear();
             tempList.Dispose();
         }
+        [BurstCompile]
         public unsafe void FireTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
             var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
             //查询条件
@@ -390,14 +391,14 @@ namespace YY.MainGame {
                      Pos = data.CurrentPos,
                      MaxNum = 1,
                  });
-            float3 Dir = float3.zero;
+            float2 Dir = float2.zero;
             if (tempList.Length > 0) {
                 var minQ = QuadFindSystem.FindMinTarget(tempList, data.CurrentPos);
-                Dir = minQ.NearPos - data.CurrentPos;
+                Dir = minQ.NearPos.xz - data.CurrentPos.xz;
                 Dir = math.normalize(Dir);
                 tempList.Clear();
             }
-            if(Dir.Equals( float3.zero)) {
+            if (Dir.Equals(float2.zero)) {
                 Dir.x = 1;
             }
             TreeQuery.Q(aabb,
@@ -412,7 +413,7 @@ namespace YY.MainGame {
                     Pos = data.CurrentPos,
                     CurrentAttackDir = Dir,
                     AttackCircle = data.CurrentAttackCircle,
-                    AttackRange = 180,
+                    AttackRange = 60,
                     MaxNum = -1,
                 });
             if (tempList.Length > 0) {
@@ -452,7 +453,7 @@ namespace YY.MainGame {
             } else {
                 data.IsBeAttack = false;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                data.CurrentAttackDir = Dir;
+                data.CurrentAttackDir.xz = Dir;
                 ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
             }
             tempList.Clear();

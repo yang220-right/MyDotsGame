@@ -31,7 +31,7 @@ namespace CustomQuadTree {
         //查询类型
         public AttackRangeType AttackType;
         public float3 Pos;
-        public float3 CurrentAttackDir;//当前攻击方向
+        public float2 CurrentAttackDir;//当前攻击方向
         public float AttackCircle;//攻击半径
         public float AttackRange;//范围
         public float MaxNum;//最大查询人数
