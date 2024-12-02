@@ -89,13 +89,13 @@ namespace YY.MainGame {
                     data.MaxHP = 100000;
                     data.BaseAttackInterval = 0.1f;
                     data.BaseAttack = 2;
-                    data.CurrentAttackCircle = 2;
+                    data.CurrentAttackCircle = 15;
                 } else if (data.Type == DataType.Turret) {
                     data.MaxHP = 1000;
                     data.BaseAttack = 2;
                     data.CurrentAttackCircle = 20;
                 } else {
-                    data.MaxHP = 20;
+                    data.MaxHP = 4;
                     data.BaseAttackInterval = 2;
                     data.BaseAttack = 2;
                     data.CurrentAttackCircle = 2;
@@ -137,7 +137,7 @@ namespace YY.MainGame {
                 data.Type = DataType.Turret;
                 switch (turretData.Type) {
                     case TurretType.GunTowers:
-                        data.BaseAttackInterval = 0.1f;
+                        data.BaseAttackInterval = 0.3f;
                         data.AttackAngle = 0;
                         turretData.AttackType = AttackRangeType.Single;
                         break;

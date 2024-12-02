@@ -6,12 +6,20 @@ using YY.Projectile;
 using YY.Turret;
 
 public partial class TurretManagerSystemBase : SystemBase {
+    private TurretType turretType = TurretType.GunTowers;
     protected override void OnCreate() {
         RequireForUpdate<GameControllerData>();
     }
     protected override void OnUpdate() {
         var data = SystemAPI.GetSingletonRW<GameControllerData>();
         if (data.ValueRO.Type == GameStateType.Over) return;
+
+        if (Input.GetKeyDown(KeyCode.Alpha1)) {
+            turretType = TurretType.GunTowers;
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha2)) {
+            turretType = TurretType.FireTowers;
+        }
 
         if (Input.GetMouseButtonDown(0)) {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -20,7 +28,7 @@ public partial class TurretManagerSystemBase : SystemBase {
                 var baseData = SystemAPI.GetSingletonBuffer<CreateTurretBuffer>();
                 baseData.Add(new CreateTurretBuffer
                 {
-                    type = TurretType.FireTowers,
+                    type = turretType,
                     Num = 1,
                     Pos = pos,
                 });

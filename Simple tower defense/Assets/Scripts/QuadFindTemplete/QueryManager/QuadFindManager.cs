@@ -10,9 +10,6 @@ using YY.Turret;
 using NativeQuadTree;
 using static CustomQuadTree.CustomNativeQuadTree;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Entities.UniversalDelegates;
-using Unity.VisualScripting;
-
 
 namespace YY.MainGame {
     /// <summary>
@@ -83,28 +80,24 @@ namespace YY.MainGame {
             //创建查询
             var treeQuery = new CustomQuadTreeQuery().InitTree(quadTree);
 
-            var ecbEnemyAttack = new EntityCommandBuffer(Allocator.TempJob);
+            //var ecbEnemyAttack = new EntityCommandBuffer(Allocator.TempJob);
             var ecbCoreAttack = new EntityCommandBuffer(Allocator.TempJob);
             var ecbTurretAttack = new EntityCommandBuffer(Allocator.TempJob);
 
             //敌人查询最近防御塔
-            var enemyDataArr = enemyQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
-            var enemyQueryDataArr = enemyQuery.ToComponentDataArray<BaseEnemyData>(Allocator.TempJob);
-            state.Dependency = new EnemyAttackJob()
-            {
-                ECB = ecbEnemyAttack,
-                TreeQuery = treeQuery,
-                AllData = dataArr,
-                entityArr = entityArr,
-                time = SystemAPI.Time.DeltaTime,
+            //state.Dependency = new EnemyAttackJob()
+            //{
+            //    ECB = ecbEnemyAttack,
+            //    TreeQuery = treeQuery,
+            //    AllData = dataArr,
+            //    entityArr = entityArr,
+            //    time = SystemAPI.Time.DeltaTime,
 
-                dataArr = enemyDataArr,
-                queryDataArr = enemyQueryDataArr,
-                dataIndexInAll = enemyID,
-                QueryNum = turretEntity.Length + coreEntity.Length,
-            }.Schedule(state.Dependency);
-            state.CompleteDependency();
-            ecbEnemyAttack.Playback(state.EntityManager);
+            //    dataIndexInAll = enemyID,
+            //    QueryNum = turretEntity.Length + coreEntity.Length,
+            //}.Schedule(enemyQuery, state.Dependency);
+            //state.CompleteDependency();
+            //ecbEnemyAttack.Playback(state.EntityManager);
             if (coreQuery.CalculateEntityCount() > 0) {
                 //核心查询最近敌人
                 state.Dependency = new CoreAttackJob()
@@ -115,15 +108,12 @@ namespace YY.MainGame {
                     entityArr = entityArr,
                     time = SystemAPI.Time.DeltaTime,
 
-                    dataArr = coreQuery.ToComponentDataArray<BasicAttributeData>(Allocator.Temp)[0],
                     coreIndex = coreIndex,
-                }.Schedule(state.Dependency);
+                }.Schedule(coreQuery, state.Dependency);
                 state.CompleteDependency();
                 ecbCoreAttack.Playback(state.EntityManager);
             }
             //防御塔查询敌人并攻击
-            var turretDataArr = turretQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
-            var turretQueryDataArr = turretQuery.ToComponentDataArray<BaseTurretData>(Allocator.TempJob);
             state.Dependency = new TurretAttackJob()
             {
                 ECB = ecbTurretAttack,
@@ -132,18 +122,17 @@ namespace YY.MainGame {
                 entityArr = entityArr,
                 time = SystemAPI.Time.DeltaTime,
 
-                dataArr = turretDataArr,
-                queryDataArr = turretQueryDataArr,
                 dataIndexInAll = turretID,
                 QueryNum = enemyEntity.Length,
-            }.Schedule(state.Dependency);
+            }.Schedule(turretQuery, state.Dependency);
             state.CompleteDependency();
             ecbTurretAttack.Playback(state.EntityManager);
 
-            ecbEnemyAttack.Dispose();
+            //ecbEnemyAttack.Dispose();
             ecbCoreAttack.Dispose();
             ecbTurretAttack.Dispose();
         }
+        [BurstCompile]
         public static unsafe QueryResultDispose FindMinTarget(NativeList<QuadElement> tempList, float3 comparePos) {
             var q= new QueryResultDispose()
             {
@@ -162,74 +151,88 @@ namespace YY.MainGame {
             }
             return q;
         }
+        public static unsafe QueryResultDispose RandomTarget(NativeList<QuadElement> tempList, int seed = -1) {
+            var q= new QueryResultDispose()
+            {
+                MinValue = float.MaxValue,
+                QueryIndex = -1
+            };
+            if (tempList.Length > 0) {
+                QuadElement item;
+                if (seed == -1) {
+                    item = tempList[0];
+                } else {
+                    item = tempList[Unity.Mathematics.Random.CreateFromIndex((uint)seed).NextInt(0, tempList.Length)];
+                }
+                q.NearPos = item.element.CurrentPos;
+                q.QueryIndex = item.selfIndex;
+                q.SelfIndex = item.queryIndex;
+            }
+            return q;
+        }
         public static unsafe void FindMutipleTarget() {
 
         }
     }
 
+    ///todo 在查询前,计算一次流场进行寻路,每个敌人会计算出一个防御塔为最近的目标,每次新增防御塔都会重新计算一次
+    ///todo 然后一直向着目标移动,并判断距离,如果距离够近,则开始攻击 可以用GameControl来控制是否需要重新计算流场
+
     //敌人攻击目标查询
-    [BurstCompile]
-    public partial struct EnemyAttackJob : IJob {
-        public EntityCommandBuffer ECB;
-        //使用安全指针
-        [NativeDisableUnsafePtrRestriction]
-        [ReadOnly]public CustomQuadTreeQuery TreeQuery;
-        [ReadOnly]public NativeArray<BasicAttributeData> AllData;
-        [ReadOnly]public NativeArray<Entity> entityArr;
-        [ReadOnly]public float time;
-        //谁来查
-        [ReadOnly]public NativeArray<BasicAttributeData> dataArr;
-        [ReadOnly]public NativeArray<BaseEnemyData> queryDataArr;
-        [ReadOnly]public NativeArray<int> dataIndexInAll;//并查集
-        [ReadOnly]public int QueryNum;//能够查询的最大数量
+    //[BurstCompile]
+    //public partial struct EnemyAttackJob : IJobEntity {
+    //    public EntityCommandBuffer ECB;
+    //    //使用安全指针
+    //    [NativeDisableUnsafePtrRestriction]
+    //    [ReadOnly]public CustomQuadTreeQuery TreeQuery;
+    //    [ReadOnly]public NativeArray<BasicAttributeData> AllData;
+    //    [ReadOnly]public NativeArray<Entity> entityArr;
+    //    [ReadOnly]public float time;
+    //    //谁来查
+    //    [ReadOnly]public NativeArray<int> dataIndexInAll;//并查集
+    //    [ReadOnly]public int QueryNum;//能够查询的最大数量
 
-        [BurstCompile]
-        public unsafe void Execute() {
-            var tempList = new NativeList<QuadElement>(AllData.Length,Allocator.Temp);
+    //    [BurstCompile]
+    //    public unsafe void Execute([EntityIndexInQuery] int index, Entity e, ref BasicAttributeData data, ref BaseEnemyData queryData) {
+    //        var tempList = new NativeList<QuadElement>(AllData.Length,Allocator.Temp);
+    //        //查询条件
+    //        var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+    //        TreeQuery.Q(aabb,
+    //                tempList,
+    //                new QueryInfo()
+    //                {
+    //                    type = QueryType.Include,
+    //                    targetType = DataType.Turret | DataType.Core,
+    //                    selfIndex = dataIndexInAll[index]
+    //                });
+    //        //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
+    //        var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
+    //        if (q.QueryIndex >= 0) {
+    //            var targetData = AllData[q.QueryIndex];
+    //            //敌人攻击防御塔
+    //            if (data.IsBeAttack) {
+    //                if (data.RemainAttackIntervalTime <= 0) {
+    //                    ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+    //                    {
+    //                        HP = data.CurrentAttack
+    //                    });
+    //                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+    //                }
+    //            }
+    //            queryData.MovePos = q.NearPos;
+    //        } else {//没查到人,则执行默认走路
+    //            queryData.MovePos = float3.zero;
+    //        }
+    //        queryData.MovePos = float3.zero;
+    //        tempList.Clear();
+    //        tempList.Dispose();
+    //    }
+    //}
 
-            for (int i = 0; i < dataArr.Length; i++) {
-                var data = dataArr[i];
-                var queryData = queryDataArr[i];
-                //查询条件
-                var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
-                TreeQuery.Q(aabb,
-                        tempList,
-                        new QueryInfo()
-                        {
-                            type = QueryType.Include,
-                            targetType = DataType.Turret | DataType.Core,
-                            selfIndex = dataIndexInAll[i]
-                        });
-                //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
-                var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
-                if (q.QueryIndex >= 0) {
-                    var targetData = AllData[q.QueryIndex];
-                    //敌人攻击防御塔
-                    if (data.IsBeAttack) {
-                        if (data.RemainAttackIntervalTime <= 0) {
-                            ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
-                            {
-                                HP = data.CurrentAttack
-                            });
-                            data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                        }
-                    }
-                    queryData.MovePos = q.NearPos;
-                    ECB.SetComponent(entityArr[dataIndexInAll[i]], queryData);
-                    ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
-                } else {//没查到人,则执行默认走路
-                    queryData.MovePos = float3.zero;
-                    ECB.SetComponent(entityArr[dataIndexInAll[i]], queryData);
-                }
-                tempList.Clear();
-            }
-            tempList.Dispose();
-        }
-    }
 
     //核心攻击敌人目标查询 暂时为单个
     [BurstCompile]
-    public partial struct CoreAttackJob : IJob {
+    public partial struct CoreAttackJob : IJobEntity {
         public EntityCommandBuffer ECB;
         [NativeDisableUnsafePtrRestriction]
         [ReadOnly]public CustomQuadTreeQuery TreeQuery;
@@ -237,13 +240,16 @@ namespace YY.MainGame {
         [ReadOnly]public NativeArray<Entity> entityArr;
         [ReadOnly]public float time;
         //谁来查
-        public BasicAttributeData dataArr;
         public int coreIndex;
-        public unsafe void Execute() {
+        [BurstCompile]
+        public unsafe void Execute([EntityIndexInQuery] int index, Entity e, ref BasicAttributeData data) {
+            if (data.RemainAttackIntervalTime <= 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
             //这里必须指定大小足够大,否则数据错乱
             var tempList = new NativeList<QuadElement>(AllData.Length,Allocator.Temp);
             var entity = entityArr[coreIndex];
-            var data = dataArr;
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
             TreeQuery.Q(
@@ -261,32 +267,26 @@ namespace YY.MainGame {
                 var targetData = AllData[q.QueryIndex];
                 data.IsBeAttack = true;
                 //攻击敌人
-                if (data.RemainAttackIntervalTime <= 0) {
-                    ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
-                    {
-                        HP = data.CurrentAttack
-                    });
-                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                    var dir = targetData.CurrentPos - data.CurrentPos;
-                    if (math.length(dir) < float.Epsilon) {
-                        dir = math.up();
-                    }
-                    ECB.AppendToBuffer(entity, new CreateProjectBuffer
-                    {
-                        Type = ProjectileType.MachineGunBaseProjectile,
-                        MoveDir = math.normalize(dir),
-                        EndPos = targetData.CurrentPos,
-                        StartPos = float3.zero,
-                        Speed = 30
-                    });
-                } else {
-                    data.RemainAttackIntervalTime -= time;
+                ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+                {
+                    HP = data.CurrentAttack
+                });
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                var dir = targetData.CurrentPos - data.CurrentPos;
+                if (math.length(dir) < float.Epsilon) {
+                    dir = math.up();
                 }
-                ECB.SetComponent(entity, data);
+                ECB.AppendToBuffer(entity, new CreateProjectBuffer
+                {
+                    Type = ProjectileType.MachineGunBaseProjectile,
+                    MoveDir = math.normalize(dir),
+                    EndPos = targetData.CurrentPos,
+                    StartPos = float3.zero,
+                    Speed = 30
+                });
             } else {
                 data.IsBeAttack = false;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                ECB.SetComponent(entity, data);
             }
             tempList.Clear();
             tempList.Dispose();
@@ -294,7 +294,7 @@ namespace YY.MainGame {
     }
 
     [BurstCompile]
-    public partial struct TurretAttackJob : IJob {
+    public partial struct TurretAttackJob : IJobEntity {
         //全部实体
         public EntityCommandBuffer ECB;
         [NativeDisableUnsafePtrRestriction]
@@ -302,30 +302,27 @@ namespace YY.MainGame {
         [ReadOnly]public NativeArray<BasicAttributeData> AllData;
         [ReadOnly]public NativeArray<Entity> entityArr;
         //谁来查
-        [ReadOnly]public NativeArray<BasicAttributeData> dataArr;
-        [ReadOnly]public NativeArray<BaseTurretData> queryDataArr;
         [ReadOnly]public NativeArray<int> dataIndexInAll;//并查集
         [ReadOnly] public int QueryNum;
         [ReadOnly]public float time;
         [BurstCompile]
-        public unsafe void Execute() {
-
-            for (int i = 0; i < dataArr.Length; i++) {
-                var data = dataArr[i];
-                var turretData = queryDataArr[i];
-                //执行查询逻辑
-                switch (turretData.Type) {
-                    case TurretType.GunTowers:
-                        GunTowersQuery(i, data, turretData);
-                        break;
-                    case TurretType.FireTowers:
-                        FireTowersQuery(i, data, turretData);
-                        break;
-                }
+        public unsafe void Execute([EntityIndexInQuery] int index, Entity e, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            //执行查询逻辑
+            switch (turretData.Type) {
+                case TurretType.GunTowers:
+                    GunTowersQuery(index, ref data, ref turretData);
+                    break;
+                case TurretType.FireTowers:
+                    FireTowersQuery(index, ref data, ref turretData);
+                    break;
             }
         }
         [BurstCompile]
-        public unsafe void GunTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
+        public unsafe void GunTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
             var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
@@ -339,43 +336,44 @@ namespace YY.MainGame {
 
                     AttackType = AttackRangeType.Single,
                 });
-            var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
+            if (tempList.Length <= 0) return;
+            var q = 
+                //QuadFindSystem.RandomTarget(tempList,i);
+                QuadFindSystem.FindMinTarget(tempList, data.CurrentPos);
             //执行查询结果,并应用
             if (q.QueryIndex >= 0) {
                 var targetData = AllData[q.QueryIndex];
                 data.IsBeAttack = true;
                 //攻击敌人
-                if (data.RemainAttackIntervalTime <= 0) {
-                    ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
-                    {
-                        HP = data.CurrentAttack
-                    });
-                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                    var dir = targetData.CurrentPos - data.CurrentPos;
-                    if (math.length(dir) < float.Epsilon)
-                        dir = math.up();
-                    ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
-                    {
-                        Type = ProjectileType.MachineGunBaseProjectile,
-                        MoveDir = math.normalize(dir),
-                        EndPos = targetData.CurrentPos,
-                        StartPos = data.CurrentPos,
-                        Speed = 30
-                    });
-                } else {
-                    data.RemainAttackIntervalTime -= time;
-                }
-                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
+                ECB.AppendToBuffer(entityArr[q.QueryIndex], new ReduceHPBuffer
+                {
+                    HP = data.CurrentAttack
+                });
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                var dir = targetData.CurrentPos - data.CurrentPos;
+                if (math.length(dir) < float.Epsilon)
+                    dir = math.up();
+                ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
+                {
+                    Type = ProjectileType.MachineGunBaseProjectile,
+                    MoveDir = math.normalize(dir),
+                    EndPos = targetData.CurrentPos,
+                    StartPos = data.CurrentPos,
+                    Speed = 30
+                });
             } else {
                 data.IsBeAttack = false;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
             }
             tempList.Clear();
             tempList.Dispose();
         }
         [BurstCompile]
-        public unsafe void FireTowersQuery(int i, BasicAttributeData data, BaseTurretData turretData) {
+        public unsafe void FireTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
             var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
             //查询条件
             var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
@@ -393,7 +391,7 @@ namespace YY.MainGame {
                  });
             float2 Dir = float2.zero;
             if (tempList.Length > 0) {
-                var minQ = QuadFindSystem.FindMinTarget(tempList, data.CurrentPos);
+                var minQ = QuadFindSystem.RandomTarget(tempList, i);
                 Dir = minQ.NearPos.xz - data.CurrentPos.xz;
                 Dir = math.normalize(Dir);
                 tempList.Clear();
@@ -413,48 +411,31 @@ namespace YY.MainGame {
                     Pos = data.CurrentPos,
                     CurrentAttackDir = Dir,
                     AttackCircle = data.CurrentAttackCircle,
-                    AttackRange = 60,
+                    AttackRange = data.AttackAngle,
                     MaxNum = -1,
                 });
             if (tempList.Length > 0) {
                 data.IsBeAttack = true;
-                if (data.RemainAttackIntervalTime <= 0) {
-                    for (int k = 0; k < tempList.Length; ++k) {
-                        var enemyResult = tempList[k];
-                        var targetData = AllData[enemyResult.selfIndex];
-                        ECB.AppendToBuffer(entityArr[enemyResult.selfIndex], new ReduceHPBuffer
-                        {
-                            HP = data.CurrentAttack
-                        });
-                        ECB.SetComponent(entityArr[enemyResult.selfIndex], new DamageColorData()
-                        {
-                            IsChange = true,
-                            BaseTime = 0.2f,
-                            BaseColor = new float4(1, 0.6f, 0.6f, 1),
-                            CurrentColor = new float4(1, 1, 1, 1),
-                        });
-                        data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                        //var dir = targetData.CurrentPos - data.CurrentPos;
-                        //if (math.length(dir) < float.Epsilon)
-                        //    dir = math.up();
-                        //ECB.AppendToBuffer(entityArr[dataIndexInAll[i]], new CreateProjectBuffer
-                        //{
-                        //    Type = ProjectileType.MachineGunBaseProjectile,
-                        //    MoveDir = math.normalize(dir),
-                        //    EndPos = targetData.CurrentPos,
-                        //    StartPos = data.CurrentPos,
-                        //    Speed = 30
-                        //});
-                    }
-                } else {
-                    data.RemainAttackIntervalTime -= time;
+                for (int k = 0; k < tempList.Length; ++k) {
+                    var enemyResult = tempList[k];
+                    var targetData = AllData[enemyResult.selfIndex];
+                    ECB.AppendToBuffer(entityArr[enemyResult.selfIndex], new ReduceHPBuffer
+                    {
+                        HP = data.CurrentAttack
+                    });
+                    ECB.SetComponent(entityArr[enemyResult.selfIndex], new DamageColorData()
+                    {
+                        IsChange = true,
+                        BaseTime = 0.2f,
+                        BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                        CurrentColor = new float4(1, 1, 1, 1),
+                    });
+                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                 }
-                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
             } else {
                 data.IsBeAttack = false;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                 data.CurrentAttackDir.xz = Dir;
-                ECB.SetComponent(entityArr[dataIndexInAll[i]], data);
             }
             tempList.Clear();
             tempList.Dispose();

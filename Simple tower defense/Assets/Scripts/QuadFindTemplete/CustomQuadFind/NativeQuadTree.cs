@@ -65,7 +65,6 @@ namespace CustomQuadTree {
             return false;
         }
     }
-
     public unsafe partial struct CustomNativeQuadTree : IDisposable {
         [NativeDisableUnsafePtrRestriction]
         UnsafeList<QuadElement>* elements;
@@ -109,8 +108,7 @@ namespace CustomQuadTree {
                 initialElementsCapacity,
                 allocator);
         }
-
-        /// <param name="incomingElements"></param>
+        [BurstCompile]
         public void ClearAndBulkInsert(NativeArray<QuadElement> incomingElements) {
             Clear();
 
@@ -155,6 +153,7 @@ namespace CustomQuadTree {
             mortonCodes.Dispose();
         }
 
+        [BurstCompile]
         int IncrementIndex(int depth, NativeArray<int> mortonCodes, int i, int atIndex) {
             var atDepth = math.max(0, maxDepth - depth);
             int shiftedMortonCode = (mortonCodes[i] >> ((atDepth - 1) * 2)) & 0b11;
@@ -162,6 +161,7 @@ namespace CustomQuadTree {
             ++atIndex;
             return atIndex;
         }
+        [BurstCompile]
         void RecursivePrepareLeaves(int prevOffset, int depth) {
             for (int l = 0; l < 4; l++) {
                 var at = prevOffset + l * LookupTables.DepthSizeLookup[maxDepth - depth+1];
@@ -180,17 +180,18 @@ namespace CustomQuadTree {
         /// <summary>
         /// 范围全部查询
         /// </summary>
+        [BurstCompile]
         public void RangeQuery(AABB2D bounds, NativeList<QuadElement> results) {
             new CustomQuadTreeQuery().InitTree(this).Q(bounds, results, new QueryInfo { type = QueryType.All });
         }
-
+        [BurstCompile]
         public void Clear() {
             UnsafeUtility.MemClear(lookup->Ptr, lookup->Capacity * UnsafeUtility.SizeOf<int>());
             UnsafeUtility.MemClear(nodes->Ptr, nodes->Capacity * UnsafeUtility.SizeOf<QuadNode>());
             UnsafeUtility.MemClear(elements->Ptr, elements->Capacity * UnsafeUtility.SizeOf<QuadElement>());
             elementsCount = 0;
         }
-
+        [BurstCompile]
         public void Dispose() {
             UnsafeList<QuadElement>.Destroy(elements);
             elements = null;
@@ -201,13 +202,14 @@ namespace CustomQuadTree {
         }
 
         #region 拓展方法
-
+        [BurstCompile]
         public unsafe QuadElement GetTreeElemenetByIndex(int index) {
             if (index < elementsCount) {
                 return (*elements)[index];
             }
             throw new IndexOutOfRangeException();
         }
+        [BurstCompile]
         public void Q(AABB2D bounds, NativeList<QuadElement> results, QueryInfo info) {
             new CustomQuadTreeQuery().InitTree(this).Q(bounds, results, info);
         }

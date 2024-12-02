@@ -31,22 +31,17 @@ namespace YY.Projectile {
         public EntityCommandBuffer.ParallelWriter ECB;
         [ReadOnly]public float time;
         [BurstCompile]
-        public void Execute([EntityIndexInQuery] int index, Entity e, in ProjectileData data, in LocalTransform trans) {
-            var tempData = data;
-            var tempTrans = trans;
-            if (!tempData.Init) {
-                tempData.Init = true;
+        public void Execute([EntityIndexInQuery] int index, Entity e, ref ProjectileData data, ref LocalTransform trans) {
+            if (!data.Init) {
+                data.Init = true;
                 ECB.SetEnabled(index, e, true);
             }
-            if (math.distancesq(tempTrans.Position, tempData.EndPos) < 0.1f || tempData.DeadTime < 0) {
+            if (math.dot(math.normalize(data.EndPos - trans.Position), data.MoveDir) <= 0 || data.DeadTime < 0) {
                 ECB.DestroyEntity(index, e);
                 return;
             }
 
-            tempTrans.Position += tempData.MoveDir * tempData.Speed * time;
-
-            ECB.SetComponent(index, e, tempData);
-            ECB.SetComponent(index, e, tempTrans);
+            trans.Position += data.MoveDir * data.Speed * time;
         }
     }
 }
