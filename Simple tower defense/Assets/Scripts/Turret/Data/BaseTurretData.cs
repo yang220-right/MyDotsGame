@@ -20,5 +20,7 @@ namespace YY.Turret {
         public float3 NearEnemy;
         public TurretType Type;
         public AttackRangeType AttackType;
+
+        public float BulletCircle;//子弹爆炸半径
     }
 }

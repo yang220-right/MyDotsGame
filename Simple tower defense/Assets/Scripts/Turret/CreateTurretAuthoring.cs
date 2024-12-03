@@ -13,6 +13,7 @@ public class CreateTurretBaker : Baker<CreateTurretAuthoring> {
             CorePrefab = GetEntity(authoring.TurretPrefab[0], TransformUsageFlags.Dynamic),
             MachineGunBasePrefab = GetEntity(authoring.TurretPrefab[1], TransformUsageFlags.Dynamic),
             FireTowersPrefab = GetEntity(authoring.TurretPrefab[2], TransformUsageFlags.Dynamic),
+            MortorTowersPrefab = GetEntity(authoring.TurretPrefab[3], TransformUsageFlags.Dynamic),
         });
         AddComponent<CreateTurretBuffer>(e);
     }

@@ -10,6 +10,7 @@ using YY.Turret;
 using NativeQuadTree;
 using static CustomQuadTree.CustomNativeQuadTree;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Transforms;
 
 namespace YY.MainGame {
     /// <summary>
@@ -40,10 +41,16 @@ namespace YY.MainGame {
                 .WithAll<BasicAttributeData>()
                 .WithAll<TurretBaseCoreData>()
                 .Build(state.EntityManager);
+            var query = new EntityQueryBuilder(Allocator.TempJob)
+                .WithAll<ProjectileData>()
+                .WithAll<LocalTransform>()
+                .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
+                .Build(state.EntityManager);
+
             var dataArr = allQuery.ToComponentDataArray<BasicAttributeData>(Allocator.TempJob);
             var entityArr = allQuery.ToEntityArray(Allocator.TempJob);
 
-            var elements = DotsUtility.GetQuarTreeElements(dataArr);
+            DotsUtility.GetQuarTreeElements(ref dataArr, out var elements);
             //重新赋值位置
             for (int i = 0; i < dataArr.Length; i++) {
                 var data = elements[i];
@@ -128,13 +135,24 @@ namespace YY.MainGame {
             state.CompleteDependency();
             ecbTurretAttack.Playback(state.EntityManager);
 
+            var projectileECB = new EntityCommandBuffer(Allocator.TempJob);
+            state.Dependency = new MoveProjectileJob()
+            {
+                ECB = projectileECB.AsParallelWriter(),
+                time = SystemAPI.Time.DeltaTime
+            }.Schedule(query, state.Dependency);
+            state.CompleteDependency();
+            projectileECB.Playback(state.EntityManager);
+
             //ecbEnemyAttack.Dispose();
             ecbCoreAttack.Dispose();
             ecbTurretAttack.Dispose();
+            projectileECB.Dispose();
+
         }
         [BurstCompile]
-        public static unsafe QueryResultDispose FindMinTarget(NativeList<QuadElement> tempList, float3 comparePos) {
-            var q= new QueryResultDispose()
+        public static unsafe void FindMinTarget(in NativeList<QuadElement> tempList, in float3 comparePos, out QueryResultDispose q) {
+            q = new QueryResultDispose()
             {
                 MinValue = float.MaxValue,
                 QueryIndex = -1
@@ -149,10 +167,9 @@ namespace YY.MainGame {
                     q.SelfIndex = item.queryIndex;
                 }
             }
-            return q;
         }
-        public static unsafe QueryResultDispose RandomTarget(NativeList<QuadElement> tempList, int seed = -1) {
-            var q= new QueryResultDispose()
+        public static unsafe void RandomTarget(in NativeList<QuadElement> tempList, out QueryResultDispose q, int seed = -1) {
+            q = new QueryResultDispose()
             {
                 MinValue = float.MaxValue,
                 QueryIndex = -1
@@ -168,10 +185,6 @@ namespace YY.MainGame {
                 q.QueryIndex = item.selfIndex;
                 q.SelfIndex = item.queryIndex;
             }
-            return q;
-        }
-        public static unsafe void FindMutipleTarget() {
-
         }
     }
 
@@ -231,6 +244,7 @@ namespace YY.MainGame {
 
 
     //核心攻击敌人目标查询 暂时为单个
+
     [BurstCompile]
     public partial struct CoreAttackJob : IJobEntity {
         public EntityCommandBuffer ECB;
@@ -262,7 +276,7 @@ namespace YY.MainGame {
                     selfIndex = coreIndex,
                 });
             //执行查询逻辑 查找最近的敌人设置位置,并且攻击扣血
-            var q = QuadFindSystem.FindMinTarget(tempList,data.CurrentPos);
+            QuadFindSystem.FindMinTarget(tempList, data.CurrentPos, out var q);
             if (q.QueryIndex >= 0) {
                 var targetData = AllData[q.QueryIndex];
                 data.IsBeAttack = true;
@@ -315,6 +329,9 @@ namespace YY.MainGame {
                 case TurretType.FireTowers:
                     FireTowersQuery(index, ref data, ref turretData);
                     break;
+                case TurretType.MortorTowers:
+                    MortorTowerQuery(index, ref data, ref turretData);
+                    break;
             }
         }
         [BurstCompile]
@@ -337,9 +354,7 @@ namespace YY.MainGame {
                     AttackType = AttackRangeType.Single,
                 });
             if (tempList.Length <= 0) return;
-            var q = 
-                //QuadFindSystem.RandomTarget(tempList,i);
-                QuadFindSystem.FindMinTarget(tempList, data.CurrentPos);
+            QuadFindSystem.FindMinTarget(tempList, data.CurrentPos, out var q);
             //执行查询结果,并应用
             if (q.QueryIndex >= 0) {
                 var targetData = AllData[q.QueryIndex];
@@ -391,7 +406,7 @@ namespace YY.MainGame {
                  });
             float2 Dir = float2.zero;
             if (tempList.Length > 0) {
-                var minQ = QuadFindSystem.RandomTarget(tempList, i);
+                QuadFindSystem.RandomTarget(tempList, out var minQ, i);
                 Dir = minQ.NearPos.xz - data.CurrentPos.xz;
                 Dir = math.normalize(Dir);
                 tempList.Clear();
@@ -437,6 +452,70 @@ namespace YY.MainGame {
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                 data.CurrentAttackDir.xz = Dir;
             }
+            tempList.Clear();
+            tempList.Dispose();
+        }
+        [BurstCompile]
+        public unsafe void MortorTowerQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = AttackRangeType.Single,
+                });
+            if (tempList.Length <= 0) return;
+
+            QuadFindSystem.RandomTarget(tempList, out var q, i);
+            tempList.Clear();
+            //应用伤害
+            aabb = new AABB2D(q.NearPos.xz, turretData.BulletCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = AttackRangeType.Circle,
+                    AttackCircle = turretData.BulletCircle,
+                    Pos = q.NearPos,
+                    MaxNum = -1,
+                });
+            if (tempList.Length > 0) {
+                data.IsBeAttack = true;
+                for (int k = 0; k < tempList.Length; ++k) {
+                    var enemyResult = tempList[k];
+                    var targetData = AllData[enemyResult.selfIndex];
+                    ECB.AppendToBuffer(entityArr[enemyResult.selfIndex], new ReduceHPBuffer
+                    {
+                        HP = data.CurrentAttack
+                    });
+                    ECB.SetComponent(entityArr[enemyResult.selfIndex], new DamageColorData()
+                    {
+                        IsChange = true,
+                        BaseTime = 0.2f,
+                        BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                        CurrentColor = new float4(1, 1, 1, 1),
+                    });
+                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                }
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+            }
+
             tempList.Clear();
             tempList.Dispose();
         }
@@ -494,5 +573,24 @@ namespace YY.MainGame {
         //    }
         //}
         //#endregion
+    }
+
+    [BurstCompile]
+    public partial struct MoveProjectileJob : IJobEntity {
+        public EntityCommandBuffer.ParallelWriter ECB;
+        [ReadOnly]public float time;
+        [BurstCompile]
+        public void Execute([EntityIndexInQuery] int index, Entity e, ref ProjectileData data, ref LocalTransform trans) {
+            if (!data.Init) {
+                data.Init = true;
+                ECB.SetEnabled(index, e, true);
+            }
+            if (math.dot(math.normalize(data.EndPos - trans.Position), data.MoveDir) <= 0 || data.DeadTime < 0) {
+                ECB.DestroyEntity(index, e);
+                return;
+            }
+
+            trans.Position += data.MoveDir * data.Speed * time;
+        }
     }
 }

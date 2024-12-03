@@ -47,6 +47,9 @@ namespace CustomQuadTree {
             //检查是否符合范围 大于直接pass
             if (math.distancesq(element.CurrentPos.xz, queryInfo.Pos.xz) > queryInfo.AttackCircle * queryInfo.AttackCircle)
                 return false;
+            //在范围内,且是半径,直接为true
+            if (queryInfo.AttackType == AttackRangeType.Circle)
+                return true;
             if (queryInfo.AttackType == AttackRangeType.Fans) {
                 //以下为扇形查询
                 //检查是否在范围内
@@ -58,6 +61,7 @@ namespace CustomQuadTree {
                 var dotDeg = math.acos(dotValue);//转弧度了
                 if (deg >= dotDeg) return true;
             }
+            
             //检查是否最大人数 
             //if (queryInfo.MaxNum <= 0) return pass;//注释掉,不用检查,因为下一行代码会狠狠检查
             if (queryInfo.MaxNum >= currentNum) return true;

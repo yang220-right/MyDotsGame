@@ -20,7 +20,7 @@ namespace YY.MainGame {
         public float BaseAttack;//攻击力
         public float CurrentAttack;//攻击力
         public float BaseAttackCircle;
-        public float CurrentAttackCircle;//攻击
+        public float CurrentAttackCircle;//攻击半径
         public float AttackAngle;//攻击角度
         public float3 CurrentAttackDir;
 

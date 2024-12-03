@@ -87,24 +87,20 @@ namespace YY.MainGame {
                 if (data.Init) return;
                 if (data.Type == DataType.Core) {
                     data.MaxHP = 100000;
-                    data.BaseAttackInterval = 0.1f;
-                    data.BaseAttack = 2;
+                    data.BaseAttackInterval = 0.3f;
                     data.CurrentAttackCircle = 15;
                 } else if (data.Type == DataType.Turret) {
                     data.MaxHP = 1000;
-                    data.BaseAttack = 2;
                     data.CurrentAttackCircle = 20;
                 } else {
                     data.MaxHP = 4;
                     data.BaseAttackInterval = 2;
-                    data.BaseAttack = 2;
                     data.CurrentAttackCircle = 2;
                 }
 
                 data.CurrentHP = data.MaxHP;
                 data.CurrentAttackInterval = data.BaseAttackInterval;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-                data.CurrentAttack = data.BaseAttack;
 
                 var posY = trans.Position.y;
                 var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));
@@ -145,6 +141,11 @@ namespace YY.MainGame {
                         data.BaseAttackInterval = 2f;
                         data.AttackAngle = 60;
                         turretData.AttackType = AttackRangeType.Fans;
+                        break;
+                    case TurretType.MortorTowers:
+                        data.BaseAttackInterval = 2f;
+                        data.AttackAngle = 0;
+                        turretData.AttackType = AttackRangeType.Single;
                         break;
                 }
 
