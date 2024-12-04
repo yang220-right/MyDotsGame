@@ -459,6 +459,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ProjectilePrefab:
   - {fileID: 7633197028612662825, guid: 8ea11dffe1e4aeb4597d770c2aea4d0d, type: 3}
+  - {fileID: 7633197028612662825, guid: f9c697caca8f73c4986495fd5803ccc6, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

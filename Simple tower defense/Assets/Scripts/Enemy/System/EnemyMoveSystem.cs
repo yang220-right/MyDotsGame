@@ -9,33 +9,24 @@ namespace YY.Enemy {
     public partial struct EnemyMoveSystem : ISystem {
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
-            state.Dependency = new MoveJob()
-            {
-                ECB = ecb.AsParallelWriter(),
+            new MoveJob(){
                 time = SystemAPI.Time.DeltaTime
-            }.Schedule(state.Dependency);
-            state.CompleteDependency();
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
+            }.Schedule();
         }
     }
     [BurstCompile]
     public partial struct MoveJob : IJobEntity {
-        public EntityCommandBuffer.ParallelWriter ECB;
         [ReadOnly] public float time;
         [BurstCompile]
         private void Execute([EntityIndexInQuery] int index, EnemyAspect data, ref LocalTransform trans) {
             if (math.distancesq(trans.Position, data.MovePos) < 2 * 2) {
                 data.BeAttack(time);
-                var rot = trans.RotateY(5 * time);
-                ECB.SetComponent(index, data.entity, rot);
+                trans = trans.RotateY(5 * time);
                 return;
             }
             data.ResetAttack();
             data.MoveTo(time);
-            var tempTran = LocalTransform.FromPosition(data.ResetPos(trans.Position));
-            ECB.SetComponent(index, data.entity, tempTran);
+            trans = LocalTransform.FromPosition(data.ResetPos(trans.Position));
         }
     }
 

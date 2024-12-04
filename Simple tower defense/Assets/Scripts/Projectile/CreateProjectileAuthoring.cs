@@ -1,11 +1,6 @@
 using System.Collections.Generic;
-using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace YY.Projectile {
     public class CreateProjectileAuthoring : MonoBehaviour {
@@ -17,10 +12,12 @@ namespace YY.Projectile {
             AddComponent(e, new ProjectilePrefabData
             {
                 MachineGunBaseProjectilePrefab = GetEntity(authoring.ProjectilePrefab[0], TransformUsageFlags.Dynamic),
+                MortorProjectPrefab = GetEntity(authoring.ProjectilePrefab[1], TransformUsageFlags.Dynamic),
             });
         }
     }
     public partial struct ProjectilePrefabData : IComponentData {
         public Entity MachineGunBaseProjectilePrefab;
+        public Entity MortorProjectPrefab;
     }
 }

@@ -27,33 +27,39 @@ namespace YY.Projectile {
     }
     [BurstCompile]
     public partial struct CreateProjectileJob : IJobEntity {
-        [ReadOnly]public ProjectilePrefabData prefabData;
         public EntityCommandBuffer.ParallelWriter ECB;
+
+        [ReadOnly]public ProjectilePrefabData prefabData;
         [BurstCompile]
         public void Execute([EntityIndexInQuery] int index, ref DynamicBuffer<CreateProjectBuffer> buffer) {
             if (buffer.Length <= 0) return;
 
             foreach (var item in buffer) {
+                Entity e = Entity.Null;
+                LocalTransform tempTrans = LocalTransform.Identity;
+                ProjectileData data = new ProjectileData();
+
+                data.Data = item;
+
                 switch (item.Type) {
                     case ProjectileType.MachineGunBaseProjectile: {
-                            var e = ECB.Instantiate(index,prefabData.MachineGunBaseProjectilePrefab);
-                            ECB.AddComponent(index, e, new ProjectileData
-                            {
-                                MoveDir = item.MoveDir,
-                                Speed = item.Speed,
-                                EndPos = item.EndPos,
-                                DeadTime = 2,
-                            });
-                            var tempTrans = LocalTransform.FromPosition(item.StartPos);
-                            tempTrans.Rotation = quaternion.LookRotation(item.MoveDir,math.up());
+                            e = ECB.Instantiate(index, prefabData.MachineGunBaseProjectilePrefab);
+                            tempTrans = LocalTransform.FromPosition(item.StartPos);
+                            tempTrans.Rotation = quaternion.LookRotation(item.MoveDir, math.up());
 
-                            ECB.SetComponent(index, e, tempTrans);
-                            ECB.SetEnabled(index, e, false);
+                            break;
+                        }
+                    case ProjectileType.MortorProjectile: {
+                            e = ECB.Instantiate(index, prefabData.MortorProjectPrefab);
+                            tempTrans = LocalTransform.FromPosition(item.StartPos);
                             break;
                         }
                     default:
                         break;
                 }
+                ECB.AddComponent(index, e, data);
+                ECB.SetComponent(index, e, tempTrans);
+                ECB.SetEnabled(index, e, false);
             }
             buffer.Clear();
         }
