@@ -41,14 +41,13 @@ public static partial class DotsUtility {
         pos += tt * p2;
     }
 
-    public static float3 CalculateCubicBezierPoint(float t, float3 p0, float3 p1, float3 p2) {
+    public static void CalculateCubicBezierPoint(float t, float3 p0, float3 p1, float3 p2, out float3 p) {
         float u = 1 - t;
         float tt = t * t;
         float uu = u * u;
-        float3 p = uu * p0;
+        p = uu * p0;
         p += 2 * u * t * p1;
         p += tt * p2;
-        return p;
     }
     ///<summary>
     ///获取存储贝塞尔曲线点的数组
@@ -58,14 +57,12 @@ public static partial class DotsUtility {
     ///<paramname="endPoint"></param>目标点
     ///<paramname="segmentNum"></param>采样点的数量
     ///<returns></returns>存储贝塞尔曲线点的数组
-    public static float3[] GetBeizerList(float3 startPoint, float3 controlPoint, float3 endPoint, int segmentNum) {
-        float3[] path = new float3[segmentNum];
+    public static void GetBeizerList(float3 startPoint, float3 controlPoint, float3 endPoint, int segmentNum, out float3[] path) {
+        path = new float3[segmentNum];
         for (int i = 1; i <= segmentNum; i++) {
             float t = i / (float) segmentNum;
-            float3 pixel = CalculateCubicBezierPoint(t, startPoint,
-                    controlPoint, endPoint);
+            CalculateCubicBezierPoint(t, startPoint, controlPoint, endPoint, out var pixel);
             path[i - 1] = pixel;
         }
-        return path;
     }
 }
