@@ -28,11 +28,12 @@ public static partial class DotsUtility {
         return (value - compareTo) < float.Epsilon;
     }
     [BurstCompile]
-    public static void CalculateCubicBezierPoint(float ct, float at, float3 p0, float3 p1, float3 p2, out float3 pos) {
+    public static void CalculateCubicBezierPoint(in float ct, in float at, in float3 p0, in float3 p1, in float3 p2, out float3 pos) {
+        var tempct = ct;
         if (ct > at) {
-            ct = at;
+            tempct = at;
         }
-        var t = ct / at;
+        var t = tempct / at;
         float u = 1 - t;
         float tt = t * t;
         float uu = u * u;
@@ -40,8 +41,8 @@ public static partial class DotsUtility {
         pos += 2 * u * t * p1;
         pos += tt * p2;
     }
-
-    public static void CalculateCubicBezierPoint(float t, float3 p0, float3 p1, float3 p2, out float3 p) {
+    [BurstCompile]
+    public static void CalculateCubicBezierPoint(in float t, in float3 p0, in float3 p1, in float3 p2, out float3 p) {
         float u = 1 - t;
         float tt = t * t;
         float uu = u * u;
@@ -57,8 +58,9 @@ public static partial class DotsUtility {
     ///<paramname="endPoint"></param>目标点
     ///<paramname="segmentNum"></param>采样点的数量
     ///<returns></returns>存储贝塞尔曲线点的数组
-    public static void GetBeizerList(float3 startPoint, float3 controlPoint, float3 endPoint, int segmentNum, out float3[] path) {
-        path = new float3[segmentNum];
+    [BurstCompile]
+    public static void GetBeizerList(in float3 startPoint, in float3 controlPoint, in float3 endPoint, in int segmentNum, out NativeArray<float3> path) {
+        path = new NativeArray<float3>(segmentNum, Allocator.Temp);
         for (int i = 1; i <= segmentNum; i++) {
             float t = i / (float) segmentNum;
             CalculateCubicBezierPoint(t, startPoint, controlPoint, endPoint, out var pixel);

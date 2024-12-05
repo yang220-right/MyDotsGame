@@ -64,6 +64,10 @@ namespace YY.Turret {
                                 baseTurretData.BulletCircle = 2;
                                 e = ECB.Instantiate(index, turretPrefabData.MortorTowersPrefab);
                                 break;
+                            case TurretType.SniperTowers:
+                                basicAttributeData.BaseAttack = 300;
+                                e = ECB.Instantiate(index, turretPrefabData.SniperTowersPrefab);
+                                break;
                         }
                         //共同属性
                         basicAttributeData.Type = DataType.Turret;

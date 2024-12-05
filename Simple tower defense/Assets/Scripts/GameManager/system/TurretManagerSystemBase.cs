@@ -23,6 +23,9 @@ public partial class TurretManagerSystemBase : SystemBase {
         if (Input.GetKeyDown(KeyCode.Alpha3)) {
             turretType = TurretType.MortorTowers;
         }
+        if (Input.GetKeyDown(KeyCode.Alpha4)) {
+            turretType = TurretType.SniperTowers;
+        }
 
         if (Input.GetMouseButtonDown(0)) {
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);

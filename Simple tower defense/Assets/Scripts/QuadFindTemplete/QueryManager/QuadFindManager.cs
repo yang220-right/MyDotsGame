@@ -172,6 +172,24 @@ namespace YY.MainGame {
                 }
             }
         }
+        [BurstCompile]
+        public static unsafe void FindMaxHPTarget(in NativeList<QuadElement> tempList, out QueryResultDispose q) {
+            q = new QueryResultDispose()
+            {
+                MinValue = float.MaxValue,
+                QueryIndex = -1
+            };
+            float maxHP = 0;
+            foreach (var item in tempList) {
+                //排除未初始化的搜索的实体
+                if (maxHP < item.element.CurrentHP) {
+                    q.NearPos = item.element.CurrentPos;
+                    q.QueryIndex = item.selfIndex;
+                    q.SelfIndex = item.queryIndex;
+                }
+            }
+        }
+
         public static unsafe void RandomTarget(in NativeList<QuadElement> tempList, out QueryResultDispose q, int seed = -1) {
             q = new QueryResultDispose()
             {
@@ -335,6 +353,9 @@ namespace YY.MainGame {
                     break;
                 case TurretType.MortorTowers:
                     MortorTowerQuery(index, ref data, ref turretData);
+                    break;
+                case TurretType.SniperTowers:
+                    SniperTowersQuery(index, ref data, ref turretData);
                     break;
             }
         }
@@ -510,6 +531,55 @@ namespace YY.MainGame {
                         MaxNum = -1,
                     }
                 });
+            }
+            tempList.Clear();
+            tempList.Dispose();
+        }
+
+        public unsafe void SniperTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = AttackRangeType.Single,
+                });
+            if (tempList.Length <= 0) return;
+            QuadFindSystem.FindMaxHPTarget(tempList, out var q);
+            //执行查询结果,并应用
+            if (q.QueryIndex >= 0) {
+                var targetData = AllData[q.QueryIndex];
+                data.IsBeAttack = true;
+                //攻击敌人
+                ECB.AppendToBuffer(i, entityArr[q.QueryIndex], new ReduceHPBuffer
+                {
+                    HP = data.CurrentAttack
+                });
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                var dir = targetData.CurrentPos - data.CurrentPos;
+                if (math.length(dir) < float.Epsilon)
+                    dir = math.up();
+                ECB.AppendToBuffer(i, entityArr[dataIndexInAll[i]], new CreateProjectBuffer
+                {
+                    Type = ProjectileType.MachineGunBaseProjectile,
+                    MoveDir = math.normalize(dir),
+                    EndPos = targetData.CurrentPos,
+                    StartPos = data.CurrentPos,
+                    Speed = 80
+                });
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
             }
             tempList.Clear();
             tempList.Dispose();

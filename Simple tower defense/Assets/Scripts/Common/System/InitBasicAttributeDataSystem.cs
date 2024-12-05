@@ -147,6 +147,11 @@ namespace YY.MainGame {
                         data.AttackAngle = 0;
                         turretData.AttackType = AttackRangeType.Single;
                         break;
+                    case TurretType.SniperTowers:
+                        data.BaseAttackInterval = 5f;
+                        data.AttackAngle = 0;
+                        turretData.AttackType = AttackRangeType.Single;
+                        break;
                 }
 
                 data.CurrentAttackInterval = data.BaseAttackInterval;
