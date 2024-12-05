@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d29eed10c0984347b2af4f2c4b629d7, type: 3}
   m_Name: GameSettings
   m_EditorClassIdentifier: 
-  GeneratorEnemyPerSeconds: 10
+  GeneratorEnemyPerSeconds: 50

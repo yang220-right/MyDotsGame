@@ -13,149 +13,58 @@ namespace YY.MainGame {
     [UpdateBefore(typeof(TransformSystemGroup))]
     [BurstCompile]
     public partial struct InitBasicAttributeDataSystem : ISystem {
-        private EntityQuery AllDataQuery;
-        private EntityQuery AllCoreQuery;
         private EntityQuery AllTurretQuery;
         private EntityQuery AllEnemyQuery;
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
-            AllDataQuery =
-                new EntityQueryBuilder(Allocator.TempJob)
-                .WithAll<BasicAttributeData>()
-                .WithAll<LocalTransform>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
-                .Build(state.EntityManager);
-            AllCoreQuery =
-                new EntityQueryBuilder(Allocator.TempJob)
-                .WithAll<BasicAttributeData>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
-                .WithAll<TurretBaseCoreData>()
-                .Build(state.EntityManager);
             AllTurretQuery =
                 new EntityQueryBuilder(Allocator.TempJob)
                 .WithAll<BasicAttributeData>()
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
-                .WithAll<BaseTurretData>()
+                .WithAll<LocalTransform>()
                 .Build(state.EntityManager);
             AllEnemyQuery =
                 new EntityQueryBuilder(Allocator.TempJob)
                 .WithAll<BasicAttributeData>()
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities)
                 .WithAll<BaseEnemyData>()
+                .WithAll<LocalTransform>()
                 .Build(state.EntityManager);
 
-            var ecb = new EntityCommandBuffer(Allocator.TempJob);
-
-            state.Dependency = new InitBasicAttributeDataJob()
-            {
-                ECB = ecb.AsParallelWriter(),
-            }.Schedule(AllDataQuery, state.Dependency);
-            state.CompleteDependency();
-            state.Dependency = new InitCoreAttributeDatajob
-            {
-                ECB = ecb.AsParallelWriter(),
-            }.Schedule(AllCoreQuery, state.Dependency);
-            state.CompleteDependency();
-            state.Dependency = new InitTurretAttributeDataJob
-            {
-                ECB = ecb.AsParallelWriter(),
-            }.Schedule(AllTurretQuery, state.Dependency);
-            state.CompleteDependency();
+            var ecbEnemy = new EntityCommandBuffer(Allocator.TempJob);
+            var ecbTurret = new EntityCommandBuffer(Allocator.TempJob);
             state.Dependency = new InitEnemyAttributeDatajob
             {
-                ECB = ecb.AsParallelWriter(),
+                ECB = ecbEnemy.AsParallelWriter(),
             }.Schedule(AllEnemyQuery, state.Dependency);
             state.CompleteDependency();
+            ecbEnemy.Playback(state.EntityManager);
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
-            AllDataQuery.Dispose();
-            AllCoreQuery.Dispose();
+            state.Dependency = new InitAttributeDatajob
+            {
+                ECB = ecbTurret.AsParallelWriter(),
+            }.Schedule(AllTurretQuery, state.Dependency);
+            state.CompleteDependency();
+            ecbTurret.Playback(state.EntityManager);
+
+            ecbEnemy.Dispose();
+            ecbTurret.Dispose();
             AllTurretQuery.Dispose();
             AllEnemyQuery.Dispose();
         }
 
         [BurstCompile]
-        public partial struct InitBasicAttributeDataJob : IJobEntity {
-            public EntityCommandBuffer.ParallelWriter ECB;
-            [BurstCompile]
-            private void Execute([EntityIndexInQuery] int index,
-                Entity e,
-                ref BasicAttributeData data,
-                in LocalTransform trans) {
-
-                if (data.Init) return;
-                if (data.Type == DataType.Core) {
-                    data.MaxHP = 100000;
-                    data.BaseAttackInterval = 0.3f;
-                    data.CurrentAttackCircle = 15;
-                } else if (data.Type == DataType.Turret) {
-                    data.MaxHP = 1000;
-                    data.CurrentAttackCircle = 20;
-                } else {
-                    data.MaxHP = 4;
-                    data.BaseAttackInterval = 2;
-                    data.CurrentAttackCircle = 2;
-                }
-
-                data.CurrentHP = data.MaxHP;
-                data.CurrentAttackInterval = data.BaseAttackInterval;
-                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
-
-                var posY = trans.Position.y;
-                var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));
-
-                ECB.SetComponent(index, e, tempTrans);
-            }
-        }
-        [BurstCompile]
-        public partial struct InitCoreAttributeDatajob : IJobEntity {
+        public partial struct InitAttributeDatajob : IJobEntity {
             public EntityCommandBuffer.ParallelWriter ECB;
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int index, Entity e,
                  ref BasicAttributeData data,
-                 in TurretBaseCoreData coreData
+                 in LocalTransform trans
                 ) {
                 if (data.Init) return;
-                data.Init = true;
-                ECB.SetEnabled(index, e, true);
-            }
-        }
-        [BurstCompile]
-        public partial struct InitTurretAttributeDataJob : IJobEntity {
-            public EntityCommandBuffer.ParallelWriter ECB;
-            [BurstCompile]
-            private void Execute([EntityIndexInQuery] int index, Entity e,
-                 ref BasicAttributeData data,
-                ref BaseTurretData turretData) {
-                if (data.Init) return;
-                //初始化
-                data.Type = DataType.Turret;
-                switch (turretData.Type) {
-                    case TurretType.GunTowers:
-                        data.BaseAttackInterval = 0.3f;
-                        data.AttackAngle = 0;
-                        turretData.AttackType = AttackRangeType.Single;
-                        break;
-                    case TurretType.FireTowers:
-                        data.BaseAttackInterval = 2f;
-                        data.AttackAngle = 60;
-                        turretData.AttackType = AttackRangeType.Fans;
-                        break;
-                    case TurretType.MortorTowers:
-                        data.BaseAttackInterval = 2f;
-                        data.AttackAngle = 0;
-                        turretData.AttackType = AttackRangeType.Single;
-                        break;
-                    case TurretType.SniperTowers:
-                        data.BaseAttackInterval = 5f;
-                        data.AttackAngle = 0;
-                        turretData.AttackType = AttackRangeType.Single;
-                        break;
-                }
-
-                data.CurrentAttackInterval = data.BaseAttackInterval;
-                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                var posY = trans.Position.y;
+                var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));
+                ECB.SetComponent(index, e, tempTrans);
 
                 data.Init = true;
                 ECB.SetEnabled(index, e, true);
@@ -167,12 +76,25 @@ namespace YY.MainGame {
             [BurstCompile]
             private void Execute([EntityIndexInQuery] int index, Entity e,
                  ref BasicAttributeData data,
-                 ref BaseEnemyData enemyData
+                 ref BaseEnemyData enemyData,
+                 in LocalTransform trans
                 ) {
                 if (data.Init) return;
-                enemyData.Speed = 5;
+                data.MaxHP = 4;
+                data.BaseAttackInterval = 2;
+                data.CurrentAttackCircle = 2;
+                data.CurrentHP = data.MaxHP;
+                data.CurrentAttackInterval = data.BaseAttackInterval;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
                 data.Init = true;
+
+                enemyData.Speed = 5;
+
+                var posY = trans.Position.y;
+                var tempTrans = LocalTransform.FromPosition(new float3(data.CurrentPos.x,posY,data.CurrentPos.z));
+
                 ECB.SetEnabled(index, e, true);
+                ECB.SetComponent(index, e, tempTrans);
             }
         }
     }

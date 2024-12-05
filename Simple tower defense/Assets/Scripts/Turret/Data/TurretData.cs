@@ -7,6 +7,8 @@ public partial struct TurretPrefabData : IComponentData {
     public Entity FireTowersPrefab;
     public Entity MortorTowersPrefab;
     public Entity SniperTowersPrefab;
+    public Entity GuideTowerPrefab;
+    public Entity PlagueTowersPrefab;
 }
 public enum TurretType {
     Core,
@@ -14,6 +16,9 @@ public enum TurretType {
     FireTowers,
     MortorTowers,
     SniperTowers,
+    GuideTowers,
+    PlagueTowers,
+
 }
 public partial struct CreateTurretBuffer : IBufferElementData {
     public TurretType type;

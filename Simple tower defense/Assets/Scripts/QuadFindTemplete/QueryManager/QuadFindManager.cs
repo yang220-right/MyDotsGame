@@ -357,6 +357,12 @@ namespace YY.MainGame {
                 case TurretType.SniperTowers:
                     SniperTowersQuery(index, ref data, ref turretData);
                     break;
+                case TurretType.GuideTowers:
+                    GuideTowersQuery(index, ref data, ref turretData);
+                    break;
+                case TurretType.PlagueTowers:
+                    PlagueTowersQuery(index, ref data, ref turretData);
+                    break;
             }
         }
         [BurstCompile]
@@ -376,7 +382,7 @@ namespace YY.MainGame {
                     targetType = DataType.Enemy,
                     selfIndex = dataIndexInAll[i],
 
-                    AttackType = AttackRangeType.Single,
+                    AttackType = turretData.AttackType,
                 });
             if (tempList.Length <= 0) return;
             QuadFindSystem.FindMinTarget(tempList, data.CurrentPos, out var q);
@@ -425,7 +431,7 @@ namespace YY.MainGame {
                      targetType = DataType.Enemy,
                      selfIndex = dataIndexInAll[i],
 
-                     AttackType = AttackRangeType.Single,
+                     AttackType = turretData.AttackType,
                      Pos = data.CurrentPos,
                      MaxNum = 1,
                  });
@@ -447,7 +453,7 @@ namespace YY.MainGame {
                     targetType = DataType.Enemy,
                     selfIndex = dataIndexInAll[i],
 
-                    AttackType = AttackRangeType.Fans,
+                    AttackType = turretData.AttackType,
                     Pos = data.CurrentPos,
                     CurrentAttackDir = Dir,
                     AttackCircle = data.CurrentAttackCircle,
@@ -499,7 +505,7 @@ namespace YY.MainGame {
                     targetType = DataType.Enemy,
                     selfIndex = dataIndexInAll[i],
 
-                    AttackType = AttackRangeType.Single,
+                    AttackType = turretData.AttackType,
                 });
             if (tempList.Length <= 0) {
                 data.IsBeAttack = false;
@@ -525,7 +531,7 @@ namespace YY.MainGame {
                         targetType = DataType.Enemy,
                         selfIndex = dataIndexInAll[i],
 
-                        AttackType = AttackRangeType.Circle,
+                        AttackType = turretData.AttackType,
                         AttackCircle = turretData.BulletCircle,
                         Pos = q.NearPos,
                         MaxNum = -1,
@@ -535,7 +541,7 @@ namespace YY.MainGame {
             tempList.Clear();
             tempList.Dispose();
         }
-
+        [BurstCompile]
         public unsafe void SniperTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
             if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
                 data.RemainAttackIntervalTime -= time;
@@ -552,7 +558,7 @@ namespace YY.MainGame {
                     targetType = DataType.Enemy,
                     selfIndex = dataIndexInAll[i],
 
-                    AttackType = AttackRangeType.Single,
+                    AttackType = turretData.AttackType,
                 });
             if (tempList.Length <= 0) return;
             QuadFindSystem.FindMaxHPTarget(tempList, out var q);
@@ -577,6 +583,108 @@ namespace YY.MainGame {
                     StartPos = data.CurrentPos,
                     Speed = 80
                 });
+            } else {
+                data.IsBeAttack = false;
+                data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+            }
+            tempList.Clear();
+            tempList.Dispose();
+        }
+        [BurstCompile]
+        public unsafe void GuideTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
+            data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = turretData.AttackType,
+                });
+            if (tempList.Length <= 0) {
+                data.IsBeAttack = false;
+            } else {
+                data.IsBeAttack = true;
+                QuadFindSystem.RandomTarget(tempList, out var q, i);
+                tempList.Clear();
+                //发射子弹
+                ECB.AppendToBuffer(i, entityArr[dataIndexInAll[i]], new CreateProjectBuffer()
+                {
+                    Type = ProjectileType.MortorProjectile,
+                    MoveType = ProjectileMoveType.Curve,
+                    StartPos = data.CurrentPos,
+                    EndPos = q.NearPos,
+                    ControlePos = (data.CurrentPos + q.NearPos) / 2 + new float3(Random.CreateFromIndex((uint)(math.abs(q.NearPos.x * 100))).NextFloat(-10, 10), 5, 0),
+                    CurrentTime = 0,
+                    DeadTime = 0.5f,
+                    MaxQueryNum = QueryNum,
+                    BasicData = data,
+                    QueryInfo = new QueryInfo()
+                    {
+                        type = QueryType.Include,
+                        targetType = DataType.Enemy,
+                        selfIndex = dataIndexInAll[i],
+
+                        AttackType = turretData.AttackType,
+                        AttackCircle = turretData.BulletCircle,
+                        Pos = q.NearPos,
+                        MaxNum = -1,
+                    }
+                });
+            }
+            tempList.Clear();
+            tempList.Dispose();
+        }
+        [BurstCompile]
+        public unsafe void PlagueTowersQuery(int i, ref BasicAttributeData data, ref BaseTurretData turretData) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
+                data.RemainAttackIntervalTime -= time;
+                return;
+            }
+            var tempList = new NativeList<QuadElement>(QueryNum,Allocator.Temp);
+            //查询条件
+            var aabb = new AABB2D(data.CurrentPos.xz,data.CurrentAttackCircle);
+            TreeQuery.Q(aabb,
+                tempList,
+                new QueryInfo()
+                {
+                    type = QueryType.Include,
+                    targetType = DataType.Enemy,
+                    selfIndex = dataIndexInAll[i],
+
+                    AttackType = turretData.AttackType,
+                    Pos = data.CurrentPos,
+                    AttackCircle = data.CurrentAttackCircle,
+                    MaxNum = -1,
+                });
+            if (tempList.Length > 0) {
+                data.IsBeAttack = true;
+                for (int k = 0; k < tempList.Length; ++k) {
+                    var enemyResult = tempList[k];
+                    var targetData = AllData[enemyResult.selfIndex];
+                    ECB.AppendToBuffer(i, entityArr[enemyResult.selfIndex], new ReduceHPBuffer
+                    {
+                        HP = data.CurrentAttack
+                    });
+                    ECB.SetComponent(i, entityArr[enemyResult.selfIndex], new DamageColorData()
+                    {
+                        IsChange = true,
+                        BaseTime = 1f,
+                        BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                        CurrentColor = new float4(1, 1, 1, 1),
+                    });
+                    data.RemainAttackIntervalTime = data.CurrentAttackInterval;
+                }
             } else {
                 data.IsBeAttack = false;
                 data.RemainAttackIntervalTime = data.CurrentAttackInterval;
