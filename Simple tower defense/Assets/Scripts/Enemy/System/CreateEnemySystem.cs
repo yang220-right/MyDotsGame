@@ -39,6 +39,7 @@ namespace YY.Enemy {
                         Entity e = Entity.Null;
                         BasicAttributeData basicData = new BasicAttributeData();
                         BaseEnemyData data = new BaseEnemyData();
+                        ShaderOverrideColor color = new ShaderOverrideColor();
 
                         basicData.CurrentPos = item.Pos;
                         basicData.Type = DataType.Enemy;
@@ -46,27 +47,41 @@ namespace YY.Enemy {
                             case EnemyType.BaseCube: {
                                     e = ECB.Instantiate(index, EnemyPrefabData.BaseCubePrefab);
                                     basicData.MaxHP = 4;
+                                    basicData.BaseAttack = 10;
                                     basicData.BaseAttackInterval = 2;
                                     basicData.CurrentAttackCircle = 2;
 
                                     data.Speed = 5;
+
+                                    color.Value = new float4(1, 0.6f, 0.6f, 1);
                                     break;
                                 }
-                            default:
-                                break;
+                            case EnemyType.HighHP: {
+                                    e = ECB.Instantiate(index, EnemyPrefabData.HighHPCubePrefab);
+                                    basicData.MaxHP = 100;
+                                    basicData.BaseAttack = 300;
+                                    basicData.BaseAttackInterval = 5;
+                                    basicData.CurrentAttackCircle = 2;
+
+                                    data.Speed = 2;
+
+                                    color.Value = new float4(0.5f, 0, 0, 1);
+                                    break;
+                                }
                         }
                         basicData.CurrentHP = basicData.MaxHP;
+                        basicData.CurrentAttack = basicData.BaseAttack;
                         basicData.CurrentAttackInterval = basicData.BaseAttackInterval;
                         basicData.RemainAttackIntervalTime = basicData.CurrentAttackInterval;
 
                         ECB.AddComponent(index, e,basicData);
                         ECB.AddComponent(index, e, data);
-                        ECB.AddComponent(index, e, new ShaderOverrideColor() { Value = new float4(1, 0.6f, 0.6f, 1) });
+                        ECB.AddComponent(index, e, color);
                         ECB.AddComponent(index, e, new DamageColorData()
                         {
                             BaseTime = 0.2f,
-                            BaseColor = new float4(1, 0.6f, 0.6f, 1),
-                            CurrentColor = new float4(1, 0.6f, 0.6f, 1),
+                            BaseColor = color.Value,
+                            CurrentColor = color.Value,
                         });
                         ECB.AddBuffer<ReduceHPBuffer>(index, e);
                         ECB.AddComponent<NewItemTag>(index, e);

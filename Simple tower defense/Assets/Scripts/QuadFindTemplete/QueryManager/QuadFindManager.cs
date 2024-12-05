@@ -279,7 +279,7 @@ namespace YY.MainGame {
         public int coreIndex;
         [BurstCompile]
         public unsafe void Execute([EntityIndexInQuery] int index, Entity e, ref BasicAttributeData data) {
-            if (data.RemainAttackIntervalTime <= 0) {
+            if (data.IsBeAttack && data.RemainAttackIntervalTime > 0) {
                 data.RemainAttackIntervalTime -= time;
                 return;
             }

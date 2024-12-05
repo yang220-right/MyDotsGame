@@ -4,9 +4,6 @@ using Unity.Rendering;
 using YY.MainGame;
 
 namespace YY.Enemy {
-    public enum EnemyType {
-        BaseCube,
-    }
     public partial struct CreateEnemyBuffer : IBufferElementData {
         public EnemyType EnemyType;
         public int Num;

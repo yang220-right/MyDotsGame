@@ -10,7 +10,6 @@ using YY.MainGame;
 namespace YY.Enemy {
     public class CreateEnemyAuthroing : MonoBehaviour {
         public List<GameObject> EnemyList;
-        public Vector3 GeneratorPos;
     }
     public partial class CreateEnemyBaker : Baker<CreateEnemyAuthroing> {
         public override void Bake(CreateEnemyAuthroing authoring) {
@@ -18,7 +17,8 @@ namespace YY.Enemy {
             AddComponent<BaseEnemyData>(e);
             AddComponent(e, new EnemyPrefabData
             {
-                BaseCubePrefab = GetEntity(authoring.EnemyList[0], TransformUsageFlags.Dynamic)
+                BaseCubePrefab = GetEntity(authoring.EnemyList[0], TransformUsageFlags.Dynamic),
+                HighHPCubePrefab = GetEntity(authoring.EnemyList[1], TransformUsageFlags.Dynamic)
             });
             AddComponent<CreateEnemyBuffer>(e);
         }
@@ -26,5 +26,10 @@ namespace YY.Enemy {
 
     public partial struct EnemyPrefabData : IComponentData {
         public Entity BaseCubePrefab;
+        public Entity HighHPCubePrefab;
+    }
+    public enum EnemyType {
+        BaseCube,
+        HighHP,
     }
 }

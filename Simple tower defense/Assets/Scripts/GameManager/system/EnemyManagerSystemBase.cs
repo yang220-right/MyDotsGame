@@ -31,12 +31,23 @@ namespace YY.MainGame {
                 for (int i = 0; i < data.ValueRO.GeneratorEnemyPerSeconds; i++) {
                     var random = Unity.Mathematics.Random.CreateFromIndex(generatorNum);
                     var dir =  random.NextFloat2Direction();
-                    baseData.Add(new CreateEnemyBuffer
-                    {
-                        EnemyType = EnemyType.BaseCube,
-                        Num = 1,
-                        Pos = new float3(dir.x, 0, dir.y) * (random.NextFloat(minDis, maxDis) + baseDis),
-                    });
+
+                    var isHighHP = UnityEngine.Random.Range(0,10) == 0;
+                    if (isHighHP) {
+                        baseData.Add(new CreateEnemyBuffer
+                        {
+                            EnemyType = EnemyType.HighHP,
+                            Num = 1,
+                            Pos = new float3(dir.x, 0, dir.y) * (random.NextFloat(minDis, maxDis) + baseDis),
+                        });
+                    } else {
+                        baseData.Add(new CreateEnemyBuffer
+                        {
+                            EnemyType = EnemyType.BaseCube,
+                            Num = 1,
+                            Pos = new float3(dir.x, 0, dir.y) * (random.NextFloat(minDis, maxDis) + baseDis),
+                        });
+                    }
                     ++generatorNum;
                 }
             }

@@ -332,6 +332,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   EnemyList:
   - {fileID: 6196184965938198184, guid: a255bd88a3d05c143bcf9f887c868e42, type: 3}
+  - {fileID: 6196184965938198184, guid: 9e5270d4268d12a488ff3c40831feba1, type: 3}
   GeneratorPos: {x: -1, y: 0, z: 1}
 --- !u!1 &1321527824
 GameObject:
