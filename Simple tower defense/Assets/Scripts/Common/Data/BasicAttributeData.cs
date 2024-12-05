@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 
 namespace YY.MainGame {
+    public partial struct NewItemTag : IComponentData { }
     [Flags]
     public enum DataType {
         Turret = 1,     //防御塔
@@ -10,7 +11,6 @@ namespace YY.MainGame {
         Core = 1 << 2,       //核心
     }
     public partial struct BasicAttributeData : IComponentData {
-        public bool Init;
         public DataType Type;
 
         public int EntityID;

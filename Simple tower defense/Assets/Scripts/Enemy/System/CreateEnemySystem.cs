@@ -36,28 +36,41 @@ namespace YY.Enemy {
                 if (buffer.Length <= 0) return;
                 foreach (var item in buffer)
                     for (int i = 0; i < item.Num; i++) {
+                        Entity e = Entity.Null;
+                        BasicAttributeData basicData = new BasicAttributeData();
+                        BaseEnemyData data = new BaseEnemyData();
+
+                        basicData.CurrentPos = item.Pos;
+                        basicData.Type = DataType.Enemy;
                         switch (item.EnemyType) {
                             case EnemyType.BaseCube: {
-                                    var e = ECB.Instantiate(index, EnemyPrefabData.BaseCubePrefab);
-                                    ECB.AddComponent(index, e, new BasicAttributeData
-                                    {
-                                        CurrentPos = item.Pos,
-                                        Type = DataType.Enemy,
-                                    });
-                                    ECB.AddComponent(index, e, new BaseEnemyData()                                   );
-                                    ECB.AddComponent(index, e, new ShaderOverrideColor() { Value = new float4(1,0.6f,0.6f,1)});
-                                    ECB.AddComponent(index, e, new DamageColorData(){
-                                        BaseTime = 0.2f,
-                                        BaseColor = new float4(1, 0.6f, 0.6f, 1),
-                                        CurrentColor = new float4(1, 0.6f, 0.6f, 1),
-                                    });
-                                    ECB.AddBuffer<ReduceHPBuffer>(index, e);
-                                    ECB.SetEnabled(index, e, false);
+                                    e = ECB.Instantiate(index, EnemyPrefabData.BaseCubePrefab);
+                                    basicData.MaxHP = 4;
+                                    basicData.BaseAttackInterval = 2;
+                                    basicData.CurrentAttackCircle = 2;
+
+                                    data.Speed = 5;
                                     break;
                                 }
                             default:
                                 break;
                         }
+                        basicData.CurrentHP = basicData.MaxHP;
+                        basicData.CurrentAttackInterval = basicData.BaseAttackInterval;
+                        basicData.RemainAttackIntervalTime = basicData.CurrentAttackInterval;
+
+                        ECB.AddComponent(index, e,basicData);
+                        ECB.AddComponent(index, e, data);
+                        ECB.AddComponent(index, e, new ShaderOverrideColor() { Value = new float4(1, 0.6f, 0.6f, 1) });
+                        ECB.AddComponent(index, e, new DamageColorData()
+                        {
+                            BaseTime = 0.2f,
+                            BaseColor = new float4(1, 0.6f, 0.6f, 1),
+                            CurrentColor = new float4(1, 0.6f, 0.6f, 1),
+                        });
+                        ECB.AddBuffer<ReduceHPBuffer>(index, e);
+                        ECB.AddComponent<NewItemTag>(index, e);
+                        ECB.SetEnabled(index, e, false);
                     }
                 buffer.Clear();
             }
