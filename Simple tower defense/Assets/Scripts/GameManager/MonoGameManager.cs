@@ -1,7 +1,16 @@
+using System;
+using Unity.Entities;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
+using YY.Enemy;
+using YY.MainGame;
 
 public class MonoGameManager : MonoBehaviour {
+    public static MonoGameManager Ins;
+    public Action cb;
+    private void Start() {
+        Ins = this;
+    }
     private float currentTimeScale = 1;
     void Update() {
         if (Input.GetKeyDown(KeyCode.C)) {
@@ -13,5 +22,8 @@ public class MonoGameManager : MonoBehaviour {
                 Time.timeScale = currentTimeScale;
             }
         }
+    }
+    private void OnDrawGizmos() {
+        cb?.Invoke();
     }
 }

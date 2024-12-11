@@ -10,7 +10,6 @@ using NativeQuadTree;
 using static CustomQuadTree.CustomNativeQuadTree;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Transforms;
-using Unity.Entities.UniversalDelegates;
 
 namespace YY.MainGame {
     /// <summary>

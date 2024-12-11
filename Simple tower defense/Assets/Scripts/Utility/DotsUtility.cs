@@ -67,4 +67,12 @@ public static partial class DotsUtility {
             path[i - 1] = pixel;
         }
     }
+
+    #region 流场
+
+    [BurstCompile]
+    public static void GetIndexByXY(int x,int y, int col,out int index) => index = y * col + x;
+    public static void GetPosByIndex(int index, int col, out int2 pos) => pos = new int2(index % col, index / col);
+
+    #endregion
 }
