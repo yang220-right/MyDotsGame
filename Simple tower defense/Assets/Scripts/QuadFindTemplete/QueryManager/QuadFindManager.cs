@@ -21,8 +21,13 @@ namespace YY.MainGame {
         public int QueryIndex;//谁查到的这个数据的index
         public float3 NearPos;
     }
+
     //[UpdateInGroup(typeof(CustomFixedStep025SimulationSystemGroup))]
     public partial struct QuadFindSystem : ISystem {
+        public void OnCreate(ref SystemState state) {
+            state.RequireForUpdate<FFControllerData>();
+            state.RequireForUpdate<GameControllerData>();
+        }
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
             var allQuery = new EntityQueryBuilder(Allocator.TempJob)
@@ -56,7 +61,8 @@ namespace YY.MainGame {
                 data.pos = dataArr[i].CurrentPos.xz;
                 elements[i] = data;
             }
-            var quadTree = new CustomNativeQuadTree(new AABB2D(0,100));
+            var controllerData = SystemAPI.GetSingleton<GameControllerData>();
+            var quadTree = new CustomNativeQuadTree(new AABB2D(0,new float2(controllerData.MapColumn,controllerData.MapRow)));
 
             //并查集ID
             int currentIndex = 0;

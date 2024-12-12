@@ -14,6 +14,8 @@ namespace YY.MainGame {
                 Type = GameStateType.Begin,
 
                 GeneratorEnemyPerSeconds = authoring.Settings.GeneratorEnemyPerSeconds,
+                MapColumn = authoring.Settings.MapColumn,
+                MapRow = authoring.Settings.MapRow,
             });
         }
     }

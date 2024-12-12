@@ -13,5 +13,7 @@ namespace YY.MainGame {
         public GameStateType Type;
 
         public float GeneratorEnemyPerSeconds;
+        public int MapColumn;//x
+        public int MapRow;//y
     }
 }

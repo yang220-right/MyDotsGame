@@ -6,4 +6,6 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Settigs/GameSettings")]
 public class GameSettings : ScriptableObject {
     public float GeneratorEnemyPerSeconds;
+    public int MapColumn;
+    public int MapRow;
 }

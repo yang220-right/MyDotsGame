@@ -13,3 +13,5 @@ MonoBehaviour:
   m_Name: GameSettings
   m_EditorClassIdentifier: 
   GeneratorEnemyPerSeconds: 50
+  MapColumn: 100
+  MapRow: 100

@@ -1,3 +1,5 @@
+using System.Collections;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEditor;
@@ -11,29 +13,38 @@ public partial class FFManagerSystemBase : SystemBase {
     protected override void OnUpdate() {
         var data = SystemAPI.GetSingleton<FFControllerData>();
         var entity = SystemAPI.GetSingletonEntity<FFControllerData>();
-        if (Input.GetKeyDown(KeyCode.Alpha1)) {
-            data.BeginInit = true;
-            data.Column = 10;
-            data.Row = 10;
-            EntityManager.SetComponentData(entity, data);
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha2)) {
-            EntityManager.AddBuffer<FFPosBuffer>(entity).Add(new FFPosBuffer()
-            {
-                Pos = new int2(2, 5)
-            });
+
+        if (Input.GetMouseButtonDown(0)) {
+            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (new Plane(Vector3.up, 0).Raycast(ray, out float dis)) {
+                float3 pos = ray.GetPoint(dis);
+                pos = math.floor(pos);
+                pos += new float3(50, 0, 50);
+
+                if (pos.x < 100 && pos.z < 100) {
+                    EntityManager.AddBuffer<FFPosBuffer>(entity).Add(new FFPosBuffer()
+                    {
+                        Pos = new int2((int)pos.x, (int)pos.z)
+                    });
+                }
+            }
         }
         if (Input.GetKeyDown(KeyCode.Alpha3)) {
-            foreach (var item in data.allMapData) {
-                Debug.Log($"{item.Pos} -- {item.Value}");
+            var list = new NativeList<int2>(Allocator.Temp);
+            for (int i = 0; i < data.NeedCalculateData.Length - 1; i++) {
+                list.Add(data.NeedCalculateData[i]);
             }
+            data.Reset = true;
+            data.NeedCalculateData = list.ToArray(Allocator.TempJob);
+            EntityManager.SetComponentData(entity, data);
         }
-        MonoGameManager.Ins.cb = () => {
-            var style = new GUIStyle();
-            style.normal.textColor = Color.red;
-            foreach (var item in data.allMapData) {
-                Handles.Label(new float3(item.Pos.x, 0, item.Pos.y), $"{item.Value}", style);
-            }
-        };
+
+        //MonoGameManager.Ins.cb = () => {
+        //    var style = new GUIStyle();
+        //    style.normal.textColor = Color.red;
+        //    foreach (var item in data.AllMapData) {
+        //        Handles.Label(new float3(item.Pos.x - 50, 0, item.Pos.y - 50), $"{item.Value}", style);
+        //    }
+        //};
     }
 }
