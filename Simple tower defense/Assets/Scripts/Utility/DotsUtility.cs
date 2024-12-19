@@ -71,8 +71,20 @@ public static partial class DotsUtility {
     #region 流场
 
     [BurstCompile]
-    public static void GetIndexByXY(int x,int y, int col,out int index) => index = y * col + x;
+    public static void GetIndexByXY(int x, int y, int col, out int index) => index = y * col + x;
+    [BurstCompile]
+    public static void GetIndexByXY(float x, float y, int col, out int index) => index = ((int)y) * col + ((int)x);
+    [BurstCompile]
     public static void GetPosByIndex(int index, int col, out int2 pos) => pos = new int2(index % col, index / col);
-
+    [BurstCompile]
+    public static void ToFFPos(in int3 pos, out int2 ffPos) => ffPos = new int2(pos.x + 50, pos.z + 50);
+    [BurstCompile]
+    public static void ToFFPos(in float3 pos, out int2 ffPos) => ffPos = new int2((int)pos.x + 50, (int)pos.z + 50);
+    [BurstCompile]
+    public static void ToFFPos(in float2 pos, out int2 ffPos) => ffPos = new int2((int)pos.x + 50, (int)pos.y + 50);
+    [BurstCompile]
+    public static void ToFFPos(in int2 pos, out int2 ffPos) => ffPos = new int2(pos.x + 50, pos.x + 50);
+    [BurstCompile]
+    public static void ToPos(in int2 ffPos, out float2 pos) => pos = new float2(ffPos.x - 50, ffPos.y - 50);
     #endregion
 }

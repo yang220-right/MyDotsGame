@@ -74,7 +74,9 @@ namespace YY.Enemy {
                         basicData.CurrentAttackInterval = basicData.BaseAttackInterval;
                         basicData.RemainAttackIntervalTime = basicData.CurrentAttackInterval;
 
-                        ECB.AddComponent(index, e,basicData);
+                        data.MovePos = basicData.CurrentPos;
+
+                        ECB.AddComponent(index, e, basicData);
                         ECB.AddComponent(index, e, data);
                         ECB.AddComponent(index, e, color);
                         ECB.AddComponent(index, e, new DamageColorData()

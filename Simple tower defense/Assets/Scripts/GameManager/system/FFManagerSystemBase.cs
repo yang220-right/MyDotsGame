@@ -39,12 +39,12 @@ public partial class FFManagerSystemBase : SystemBase {
             EntityManager.SetComponentData(entity, data);
         }
 
-        //MonoGameManager.Ins.cb = () => {
-        //    var style = new GUIStyle();
-        //    style.normal.textColor = Color.red;
-        //    foreach (var item in data.AllMapData) {
-        //        Handles.Label(new float3(item.Pos.x - 50, 0, item.Pos.y - 50), $"{item.Value}", style);
-        //    }
-        //};
+        MonoGameManager.Ins.cb = () => {
+            var style = new GUIStyle();
+            style.normal.textColor = Color.red;
+            foreach (var item in data.AllMapData) {
+                Handles.Label(new float3(item.Pos.x - 50, 0, item.Pos.y - 50), $"{item.Value}", style);
+            }
+        };
     }
 }

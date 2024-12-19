@@ -23,6 +23,13 @@ namespace YY.MainGame {
                 flag = !flag;
             }
             if (flag && currentTime <= 0) {
+                CreateEnemy();
+            }
+            if (Input.GetKeyDown(KeyCode.G)) {
+                CreateEnemy();
+            }
+
+            void CreateEnemy() {
                 currentTime = 1f;
                 float baseDis = 30;
                 float minDis = 10;

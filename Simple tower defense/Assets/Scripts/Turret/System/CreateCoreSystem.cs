@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using YY.MainGame;
 
 namespace YY.Turret {
@@ -9,6 +10,7 @@ namespace YY.Turret {
         [BurstCompile]
         private void OnCreate(ref SystemState state) {
             state.RequireForUpdate<CreateTurretBuffer>();
+            state.RequireForUpdate<FFControllerData>();
         }
         [BurstCompile]
         private void OnUpdate(ref SystemState state) {
@@ -19,7 +21,7 @@ namespace YY.Turret {
             {
                 type = TurretType.Core,
                 Num = 1,
-                Pos = new Unity.Mathematics.float3(0, 0, 0),
+                Pos = new float3(0, 0, 0),
             });
         }
     }

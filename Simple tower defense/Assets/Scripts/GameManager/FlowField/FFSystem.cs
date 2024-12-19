@@ -28,6 +28,12 @@ namespace YY.MainGame {
                 data.TempCalculateData = default;
                 data.NeedCalculateData = default;
                 data.AllMapData = default;
+                //添加基地位置
+                DotsUtility.ToFFPos(int2.zero, out var pos);
+                state.EntityManager.AddBuffer<FFPosBuffer>(entity).Add(new FFPosBuffer()
+                {
+                    Pos = pos
+                });
             }
             var ffDataArr = new NativeArray<FFCellData>(data.Column * data.Row, Allocator.TempJob);
             var tempPos = new NativeParallelHashSet<int2>(64,Allocator.TempJob);
