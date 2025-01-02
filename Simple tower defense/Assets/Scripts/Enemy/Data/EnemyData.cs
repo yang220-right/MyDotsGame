@@ -1,3 +1,4 @@
+using Dots.RVO;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -20,13 +21,14 @@ namespace YY.Enemy {
         public readonly Entity entity;
         public readonly RefRW<BaseEnemyData> enemyData;
         public readonly RefRW<BasicAttributeData> baseData;
+        public readonly RefRW<AgentData> agent;
 
         public readonly float3 MovePos => enemyData.ValueRO.MovePos;
         public readonly float3 CurrentPos => baseData.ValueRO.CurrentPos;
-        public readonly float3 MoveDir{
+        public readonly float3 MoveDir {
             get {
                 var dir = enemyData.ValueRO.MovePos - baseData.ValueRO.CurrentPos;
-                if (dir.x == 0 && dir.y == 0 && dir.z == 0){
+                if (dir.x == 0 && dir.y == 0 && dir.z == 0) {
                     return math.normalize(float3.zero - baseData.ValueRO.CurrentPos);
                 }
                 return math.normalize(dir);
@@ -55,6 +57,12 @@ namespace YY.Enemy {
         public readonly void MoveTo(float delTime) {
             baseData.ValueRW.CurrentPos += delTime * MoveDir;
         }
+
+        #region ORCA
+
+
+
+        #endregion
     }
 
     [MaterialProperty("_BaseColor")]

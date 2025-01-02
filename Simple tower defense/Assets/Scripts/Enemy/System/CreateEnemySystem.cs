@@ -1,7 +1,9 @@
+using Dots.RVO;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEditor.PackageManager;
 using YY.MainGame;
 
 namespace YY.Enemy {
@@ -87,6 +89,50 @@ namespace YY.Enemy {
                         });
                         ECB.AddBuffer<ReduceHPBuffer>(index, e);
                         ECB.AddComponent<NewItemTag>(index, e);
+
+                        #region ORCA
+                        float High = 1.8f;
+                        float Height = 1f;
+                        float Radius = 1f;
+                        float RadiusObst = 1f;
+                        float MaxSpeed = 10f;
+                        float DefaultMaxSpeed = 10f;
+                        float TimeHorizon = 0.0001f;
+                        float TimeHorizonObst = 0.0001f;
+                        bool NavigationEnabled = true;
+                        bool CollisionEnabled = true;
+                        int MaxNeighbors = 4;
+                        float NeighborDist = 5f;
+                        float NeighborElev = 0.5f;
+                        ORCALayer LayerOccupation = ORCALayer.L0;
+                        ORCALayer LayerIgnore = ORCALayer.NONE;
+                        float2 PrefVelocity = float2.zero;
+                        float2 Velocity = float2.zero;
+                        ECB.AddComponent(index, e, new AgentData()
+                        {
+                            height = Height,
+                            radius = Radius,
+                            radiusObst = RadiusObst,
+                            maxSpeed = MaxSpeed,
+                            DefaultMaxSpeed = DefaultMaxSpeed,
+                            maxNeighbors = MaxNeighbors,
+                            neighborDist = NeighborDist,
+                            neighborElev = NeighborElev,
+                            timeHorizon = TimeHorizon,
+                            timeHorizonObst = TimeHorizonObst,
+                            navigationEnabled = NavigationEnabled,
+                            collisionEnabled = CollisionEnabled,
+                            layerOccupation = LayerOccupation,
+                            layerIgnore = LayerIgnore,
+                            prefVelocity = PrefVelocity,
+                            velocity = Velocity,
+                            IsSlowly = false,
+                            IsJams = false,
+                            CurrentJamsTime = 0,
+                            DefaultJamsTime = 0.5f,
+                        });
+                        #endregion
+
                         ECB.SetEnabled(index, e, false);
                     }
                 buffer.Clear();
