@@ -8,4 +8,5 @@ public class GameSettings : ScriptableObject {
     public float GeneratorEnemyPerSeconds;
     public int MapColumn;
     public int MapRow;
+    public GameObject testPrefag;
 }

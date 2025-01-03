@@ -43,17 +43,23 @@ namespace YY.Enemy {
             DotsUtility.GetIndexByXY(xy.x, xy.y, col, out var ffIndex);
             if (ffIndex > col * row) return;
             var ffData = ffDatas[ffIndex];
-            if(ffData.Value <= data.baseData.ValueRO.CurrentAttackCircle) {
+            if (ffData.Value <= data.baseData.ValueRO.CurrentAttackCircle) {
+                data.DisableRVO();
                 data.BeAttack(time);
                 trans = trans.RotateY(5 * time);//旋转
                 return;
-            }else if(math.distancesq(data.CurrentPos, data.MovePos) < 0.01f) {
+            } else if (math.distancesq(data.CurrentPos, data.MovePos) < 0.01f || data.MovePosValue > ffData.Value) {
                 //获取当前位置值小的地方
+                data.EnableRVO();
                 var minPos = FindMinValue(ffDatas, ffData.Pos);
                 data.SetMove(new float3(minPos.x, 0, minPos.y));
+                DotsUtility.ToFFPos(minPos, out var ffMinPos);
+                DotsUtility.GetIndexByXY(ffMinPos.x, ffMinPos.y, col, out var targetIndex);
+                data.SetMoveValue(ffDatas[targetIndex].Value);
             }
+
             data.ResetAttack();
-            data.MoveTo(time);
+            data.SetVocity();
             trans = LocalTransform.FromPosition(data.ResetPos(trans.Position));
         }
         [BurstCompile]
@@ -62,8 +68,8 @@ namespace YY.Enemy {
             FindAround(pos, col, row, aroundArr, out var count);
             int minValue = int.MaxValue;
             int2 minPos = new int2(0);
-            for(int i = 0; i < count; i++) {
-                DotsUtility.GetIndexByXY(aroundArr[i].x,aroundArr[i].y,col,out var index);
+            for (int i = 0; i < count; i++) {
+                DotsUtility.GetIndexByXY(aroundArr[i].x, aroundArr[i].y, col, out var index);
                 if (minValue > data[index].Value) {
                     minValue = data[index].Value;
                     minPos = aroundArr[i];
@@ -73,7 +79,7 @@ namespace YY.Enemy {
             return newMinPos;
         }
         [BurstCompile]
-        private void FindAround(in int2 pos,in int col,in int row,NativeArray<int2> arr,out int value) {
+        private void FindAround(in int2 pos, in int col, in int row, NativeArray<int2> arr, out int value) {
             NativeArray<int> dx = new NativeArray<int>(4,Allocator.Temp);
             NativeArray<int> dy = new NativeArray<int>(4,Allocator.Temp);
             dx[0] = 0; dy[0] = 1;

@@ -16,6 +16,7 @@ namespace YY.MainGame {
                 GeneratorEnemyPerSeconds = authoring.Settings.GeneratorEnemyPerSeconds,
                 MapColumn = authoring.Settings.MapColumn,
                 MapRow = authoring.Settings.MapRow,
+                testEntity = GetEntity(authoring.Settings.testPrefag, TransformUsageFlags.Dynamic)
             });
         }
     }

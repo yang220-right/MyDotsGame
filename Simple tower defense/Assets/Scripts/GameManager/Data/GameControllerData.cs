@@ -15,5 +15,8 @@ namespace YY.MainGame {
         public float GeneratorEnemyPerSeconds;
         public int MapColumn;//x
         public int MapRow;//y
+
+        //测试
+        public Entity testEntity;
     }
 }

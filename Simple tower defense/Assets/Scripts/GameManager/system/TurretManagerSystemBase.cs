@@ -1,5 +1,8 @@
+using Dots.RVO;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
+using UnityEditor.Playables;
 using UnityEngine;
 using YY.MainGame;
 using YY.Projectile;
@@ -46,5 +49,23 @@ public partial class TurretManagerSystemBase : SystemBase {
                 });
             }
         }
+        if (Input.GetKeyDown(KeyCode.X)) {
+            var pos2D = Unity.Mathematics.Random.CreateFromIndex((uint)(math.sin(SystemAPI.Time.ElapsedTime) * 1234234 % 111245)).NextFloat2Direction();
+            var pos3D = new float3(pos2D.x,0,pos2D.y) * 10;
+
+            var teste = EntityManager.Instantiate(data.ValueRO.testEntity);
+            var trans = LocalTransform.FromPosition(pos3D);
+            EntityManager.AddComponentData(teste, trans);
+        }
+
+        Entities.ForEach((
+            Entity entity,
+            int entityInQueryIndex,
+            ref LocalTransform trans,
+            in AgentData data) => {
+                trans.Position = data.worldPosition;
+            }).Run();
     }
 }
+
+

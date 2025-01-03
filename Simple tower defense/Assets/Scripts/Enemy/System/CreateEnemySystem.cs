@@ -77,6 +77,7 @@ namespace YY.Enemy {
                         basicData.RemainAttackIntervalTime = basicData.CurrentAttackInterval;
 
                         data.MovePos = basicData.CurrentPos;
+                        data.MovePosValue = int.MaxValue;
 
                         ECB.AddComponent(index, e, basicData);
                         ECB.AddComponent(index, e, data);
@@ -91,7 +92,7 @@ namespace YY.Enemy {
                         ECB.AddComponent<NewItemTag>(index, e);
 
                         #region ORCA
-                        float High = 1.8f;
+                        //float High = 1.8f;
                         float Height = 1f;
                         float Radius = 1f;
                         float RadiusObst = 1f;
@@ -130,6 +131,8 @@ namespace YY.Enemy {
                             IsJams = false,
                             CurrentJamsTime = 0,
                             DefaultJamsTime = 0.5f,
+                            position = basicData.CurrentPos.xz,
+                            worldPosition = basicData.CurrentPos,
                         });
                         #endregion
 

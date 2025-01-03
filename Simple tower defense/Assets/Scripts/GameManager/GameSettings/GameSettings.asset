@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d29eed10c0984347b2af4f2c4b629d7, type: 3}
   m_Name: GameSettings
   m_EditorClassIdentifier: 
-  GeneratorEnemyPerSeconds: 100
+  GeneratorEnemyPerSeconds: 10
   MapColumn: 100
   MapRow: 100
+  testPrefag: {fileID: 7037336585182676641, guid: 601f81f665be36a4b8b399702f6b06c8, type: 3}
